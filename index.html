@@ -98,14 +98,30 @@
         .placeholder-note { margin-top: 10px; padding: 8px 12px; background: #f0f0f0; border-radius: 6px; font-size: 10px; color: #666; line-height: 1.6; }
         .placeholder-note code { background: #fff3cd; padding: 1px 3px; border-radius: 2px; font-family: monospace; color: #874d00; font-size: 9px; }
 
-        /* Commentable */
-        .commentable { position: relative; cursor: pointer; border-radius: 8px; transition: outline 0.15s; }
-        .commentable:hover { outline: 2px dashed #667eea; outline-offset: 3px; }
-        .commentable:hover::after { content: '点击评论'; position: absolute; top: -6px; right: -4px; background: #667eea; color: white; font-size: 9px; padding: 2px 6px; border-radius: 3px; z-index: 10; }
-        .commentable.has-comments { outline: none; }
-        body.show-comments .commentable.has-comments { outline: 2px solid #ffa500; outline-offset: 2px; }
+        /* Commentable: 模块本身不再有 hover 虚线框、不再可点。
+           评论入口=右上角小按钮，hover 模块时才显示。 */
+        .commentable { position: relative; border-radius: 8px; }
+        .module-comment-btn {
+            position: absolute; top: -10px; right: -10px;
+            width: 28px; height: 28px;
+            background: white;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 50%;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0;
+            transition: opacity 0.15s, transform 0.15s, background 0.15s;
+            z-index: 10;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        .commentable:hover .module-comment-btn { opacity: 1; }
+        .module-comment-btn:hover { background: #667eea; color: white; transform: scale(1.1); border-color: #667eea; }
+        .commentable.has-comments .module-comment-btn { opacity: 1; background: #667eea; color: white; border-color: #667eea; }
+        body:not(.show-comments) .commentable.has-comments .module-comment-btn { background: white; color: #666; border-color: #e0e0e0; opacity: 0; }
+        body:not(.show-comments) .commentable.has-comments:hover .module-comment-btn { opacity: 1; }
         body:not(.show-comments) .comment-badge { display: none; }
-        .comment-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #ffa500; color: white; font-size: 8px; font-weight: 600; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 5; }
+        .comment-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #ffa500; color: white; font-size: 8px; font-weight: 600; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 5; pointer-events: none; }
 
         /* Comment panel */
         .comment-panel { position: fixed; right: 0; top: 0; width: 300px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.1); z-index: 1000; transform: translateX(100%); transition: transform 0.2s; display: flex; flex-direction: column; }
@@ -126,13 +142,11 @@
 
         .view-switcher { position: fixed; top: 16px; left: 16px; display: flex; gap: 0; background: #f0f0f0; border-radius: 8px; padding: 3px; z-index: 999; }
 
-        /* 编辑模式：commentable 模块加虚线框，提示用户处于编辑态 */
-        body.editable-mode #modeToggleBtn { background: #667eea !important; color: white !important; border-color: #667eea !important; }
-        body.editable-mode .commentable { outline: 2px dashed #667eea !important; outline-offset: 4px; }
-        /* 隐藏只在编辑态使用的按钮 */
-        body:not(.editable-mode) .ai-only-btn { display: none !important; }
         .view-btn { padding: 6px 14px; border: none; background: transparent; cursor: pointer; font-size: 12px; color: #666; border-radius: 6px; transition: all 0.15s; }
         .view-btn.active { background: white; color: #333; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        /* 评论面板内的 Tab */
+        .panel-tab.active { color: #333 !important; font-weight: 600 !important; border-bottom-color: #667eea !important; }
 
         /* 全局评论FAB：有评论时加红点 */
         #globalCommentFab.has-comments::after { content: ''; position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; background: #ff4d4f; border: 2px solid white; border-radius: 50%; }
@@ -169,10 +183,21 @@
     <div class="comment-panel" id="commentPanel">
         <div class="panel-header">
             <h3 id="panelTitle">评论</h3>
-            <div style="display:flex;gap:6px;align-items:center;">
-                <button id="batchToggleBtn" onclick="toggleBatchMode()" style="font-size:11px;padding:4px 8px;background:#f0f0f0;border:none;border-radius:4px;cursor:pointer;color:#666;">批量</button>
-                <button class="panel-close" onclick="closePanel()">×</button>
-            </div>
+            <button class="panel-close" onclick="closePanel()">×</button>
+        </div>
+        <!-- Tab 切换 -->
+        <div id="panelTabs" style="display:flex;border-bottom:1px solid #eee;background:#fafafa;">
+            <button class="panel-tab active" data-tab="comment" onclick="switchPanelTab('comment')" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;cursor:pointer;color:#333;font-weight:600;border-bottom:2px solid #667eea;">💬 评论</button>
+            <button class="panel-tab" data-tab="ai" onclick="switchPanelTab('ai')" style="flex:1;padding:10px;border:none;background:transparent;font-size:12px;cursor:pointer;color:#888;font-weight:500;border-bottom:2px solid transparent;">⚡ AI 修改</button>
+        </div>
+        <!-- 评论Tab的子工具栏：批量、导出 -->
+        <div id="commentSubToolbar" style="padding:6px 12px;background:#fafafa;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+            <button id="batchToggleBtn" onclick="toggleBatchMode()" style="font-size:11px;padding:3px 8px;background:#f0f0f0;border:none;border-radius:4px;cursor:pointer;color:#666;">批量</button>
+            <button onclick="exportAllComments()" title="导出所有评论为Markdown" style="font-size:11px;padding:3px 8px;background:#f0f0f0;border:none;border-radius:4px;cursor:pointer;color:#666;">📤 导出全部</button>
+        </div>
+        <!-- AI Tab的子工具栏：版本历史 -->
+        <div id="aiSubToolbar" style="display:none;padding:6px 12px;background:#fafafa;border-bottom:1px solid #f0f0f0;font-size:11px;">
+            <button onclick="openVersions()" style="font-size:11px;padding:3px 8px;background:#f0f0f0;border:none;border-radius:4px;cursor:pointer;color:#666;">📜 版本历史</button>
         </div>
         <div id="batchToolbar" style="display:none;padding:8px 14px;background:#f5f5f5;border-bottom:1px solid #eee;font-size:11px;color:#666;align-items:center;justify-content:space-between;">
             <span><label style="cursor:pointer;"><input type="checkbox" id="batchSelectAll" onchange="toggleSelectAll(this.checked)" style="vertical-align:middle;"> <span id="batchCountLabel">已选 0 项</span></label></span>
@@ -183,12 +208,9 @@
         </div>
         <div class="panel-body" id="panelBody"></div>
         <div class="panel-footer">
-            <textarea id="commentInput" placeholder="输入评论或修改诉求，例如：这里数字太大，改成5w"></textarea>
-            <div style="display:flex;gap:6px;margin-top:6px;">
-                <button onclick="addComment(false)" style="flex:1;padding:7px;background:#f0f0f0;color:#333;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;">发送评论</button>
-                <button class="ai-only-btn" onclick="addComment(true)" style="flex:1.4;padding:7px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">AI执行修改 ⚡</button>
-            </div>
-            <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;" id="commentFooterHint">发送评论：留言不修改 · 进入编辑后可用 AI 实时修改 HTML</div>
+            <textarea id="commentInput" placeholder="输入评论..."></textarea>
+            <button id="panelSendBtn" onclick="panelSend()" style="margin-top:6px;width:100%;padding:8px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">发送</button>
+            <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;" id="commentFooterHint">评论留言不修改页面</div>
         </div>
     </div>
 
@@ -202,12 +224,9 @@
             <div id="versionList" style="flex:1;overflow-y:auto;padding:14px 18px;"></div>
         </div>
     </div>
-    <!-- 顶部右上：模式切换 + 编辑态才出现的辅助按钮 -->
+    <!-- 顶部右上：只保留评论可见性切换 -->
     <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
         <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" title="显示评论标记" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;">🙈</button>
-        <button class="ai-only-btn" onclick="exportAllComments()" title="导出所有评论为Markdown" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">📤 导出评论</button>
-        <button class="ai-only-btn" onclick="openVersions()" style="padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">版本历史</button>
-        <button id="modeToggleBtn" onclick="toggleEditableMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;font-weight:500;">📖 只读</button>
     </div>
 
     <!-- 右下角悬浮：评论入口 -->
@@ -352,8 +371,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 xIiZf00ExyUJVJVs7QcZr8n4ZoLlapFhbUYXfmJ4F73RTzN5k9szfwxtzeVLOI/v3226zCuh34bFK84VqYik/S4IEemlncXEi97ZB/4hun9fLWP8HJc50yTFtFUs1JjV5bjPpvhs/HLeAXxsi0zjojHs3YLaA9lB0g== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'xIiZf00ExyUJVJVs7QcZr8n4ZoLlapFhbUYXfmJ4F73RTzN5k9szfwxtzeVLOI/v3226zCuh34bFK84VqYik/S4IEemlncXEi97ZB/4hun9fLWP8HJc50yTFtFUs1JjV5bjPpvhs/HLeAXxsi0zjojHs3YLaA9lB0g==';
+        // 部署脚本会把 0wZfYB6HjFWmTgpEzEH2rqp5wdLVT8EmXkV+C6nq4o7T8fVrC2wMqV0CcGPiVyzPbvCZ5EB5+JLx5wblVtGdjfR5WTU5bkFgyQ3nID/Jvw/8j/3A1IwCwOcdvg49bOnA4kBBVGLiIaHKW14A/Yo/frQyeY8w2lkZ8w== 替换为实际加密数据
+        const ENCRYPTED_KEYS = '0wZfYB6HjFWmTgpEzEH2rqp5wdLVT8EmXkV+C6nq4o7T8fVrC2wMqV0CcGPiVyzPbvCZ5EB5+JLx5wblVtGdjfR5WTU5bkFgyQ3nID/Jvw/8j/3A1IwCwOcdvg49bOnA4kBBVGLiIaHKW14A/Yo/frQyeY8w2lkZ8w==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -408,28 +427,50 @@
             'detail-table': '阶梯对应表'
         };
 
-        // ========= 模式切换：只读 / 编辑 =========
-        const EDIT_PASSWORD = 'qb2026';
-        function isEditableMode() { return document.body.classList.contains('editable-mode'); }
-        function toggleEditableMode() {
-            const on = !isEditableMode();
-            if (on) {
-                // 进入编辑态需要密码
-                const pwd = prompt('进入编辑模式需要密码：');
-                if (pwd !== EDIT_PASSWORD) { if (pwd) alert('密码错误'); return; }
+        // ========= 评论面板 Tab 切换 =========
+        let currentTab = 'comment'; // 'comment' | 'ai'
+        function switchPanelTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.panel-tab').forEach(b => {
+                b.classList.toggle('active', b.dataset.tab === tab);
+            });
+            document.getElementById('commentSubToolbar').style.display = tab === 'comment' ? 'flex' : 'none';
+            document.getElementById('aiSubToolbar').style.display = tab === 'ai' ? 'block' : 'none';
+            // 退出批量模式
+            if (tab !== 'comment') {
+                document.body.classList.remove('batch-mode');
+                document.getElementById('batchToolbar').style.display = 'none';
+                const btb = document.getElementById('batchToggleBtn');
+                if (btb) { btb.textContent = '批量'; btb.style.background = '#f0f0f0'; btb.style.color = '#666'; }
             }
-            document.body.classList.toggle('editable-mode', on);
-            const btn = document.getElementById('modeToggleBtn');
-            if (btn) btn.textContent = on ? '✏️ 编辑' : '📖 只读';
-            // 提示
-            const hint = document.getElementById('hintBar');
-            if (hint) {
-                hint.style.display = '';
-                hint.style.opacity = '0.9';
-                hint.textContent = on
-                    ? '✏️ 编辑态 · 点击模块可评论或用AI修改 · 点右下💬留评论'
-                    : '📖 只读态 · 点击模块查看/留下评论 · 点右下💬留评论';
-                setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.style.display = 'none', 300); }, 4000);
+            // 切换输入框 placeholder + 发送按钮文案
+            const isGlobal = currentSection === '_global';
+            const ta = document.getElementById('commentInput');
+            const sendBtn = document.getElementById('panelSendBtn');
+            const hint = document.getElementById('commentFooterHint');
+            if (tab === 'comment') {
+                if (ta) ta.placeholder = isGlobal ? '针对整个页面的反馈或整体方向' : '输入评论...';
+                if (sendBtn) { sendBtn.textContent = '发送'; sendBtn.style.background = '#667eea'; }
+                if (hint) hint.textContent = '评论留言不修改页面';
+            } else {
+                if (ta) ta.placeholder = '描述要怎么改，例如：把这里数字改成5w、删掉黄色边框';
+                if (sendBtn) { sendBtn.textContent = '⚡ 用 AI 修改'; sendBtn.style.background = '#667eea'; }
+                if (hint) hint.textContent = isGlobal
+                    ? '全局评论不支持 AI 修改（没有具体DOM元素）'
+                    : 'AI 会实时改 HTML，结果自动同步到云端，可在版本历史回滚';
+                if (sendBtn) sendBtn.disabled = isGlobal;
+                if (sendBtn) sendBtn.style.opacity = isGlobal ? '0.4' : '1';
+                if (sendBtn) sendBtn.style.cursor = isGlobal ? 'not-allowed' : 'pointer';
+            }
+            renderComments();
+        }
+
+        // 统一的发送入口：根据当前 Tab 决定行为
+        function panelSend() {
+            if (currentTab === 'comment') return addComment(false);
+            if (currentTab === 'ai') {
+                if (currentSection === '_global') { alert('全局评论不支持 AI 修改'); return; }
+                return addComment(true);
             }
         }
 
@@ -531,19 +572,9 @@
             currentSection = section;
             const isGlobal = section === '_global';
             document.getElementById('panelTitle').textContent = isGlobal ? '评论' : (sectionNames[section] || '评论');
-            // 全局评论不支持 AI 执行（没有具体DOM元素）
-            const aiBtn = document.querySelector('.panel-footer .ai-only-btn');
-            if (aiBtn) aiBtn.style.display = isGlobal ? 'none' : '';
-            const hint = document.getElementById('commentFooterHint');
-            if (hint) hint.textContent = isGlobal
-                ? '针对整个页面的反馈或整体方向'
-                : '发送评论：留言不修改 · 进入编辑后可用 AI 实时修改 HTML';
-            // 输入框 placeholder
-            const ta = document.getElementById('commentInput');
-            if (ta) ta.placeholder = isGlobal
-                ? '针对整个页面的反馈或整体方向'
-                : '输入评论或修改诉求，例如：这里数字太大，改成5w';
             document.getElementById('commentPanel').classList.add('open');
+            // 默认切到评论 Tab（每次打开重置）
+            switchPanelTab('comment');
             // 主动触发密码解锁
             await unlockKeys();
             await renderComments();
@@ -556,15 +587,25 @@
 
         async function renderComments() {
             const comments = await loadFromCloud();
-            const list = comments[currentSection] || [];
+            const allList = comments[currentSection] || [];
             const body = document.getElementById('panelBody');
             const isBatch = document.body.classList.contains('batch-mode');
 
-            if (list.length === 0) {
-                body.innerHTML = '<div style="text-align:center;padding:24px;color:#999;font-size:12px;">暂无评论，写下你的想法</div>';
+            // 按 Tab 过滤 + 保留原始下标（删除/重试需要用原下标）
+            const filtered = allList.map((c, originalIdx) => ({ c, originalIdx })).filter(({c}) => {
+                const isAIRecord = c.type === 'ai_executed' || c.type === 'ai_pending' || c.type === 'ai_failed';
+                return currentTab === 'ai' ? isAIRecord : !isAIRecord;
+            });
+
+            if (filtered.length === 0) {
+                const emptyHint = currentTab === 'ai'
+                    ? (currentSection === '_global' ? '全局评论不支持 AI 修改' : '还没有 AI 修改记录')
+                    : '暂无评论，写下你的想法';
+                body.innerHTML = `<div style="text-align:center;padding:24px;color:#999;font-size:12px;">${emptyHint}</div>`;
                 return;
             }
-            body.innerHTML = list.map((c, i) => {
+            body.innerHTML = filtered.map(({c, originalIdx}) => {
+                const i = originalIdx;
                 const isAI = c.type === 'ai_executed';
                 const isPending = c.type === 'ai_pending';
                 const isFailed = c.type === 'ai_failed';
@@ -948,14 +989,8 @@ action说明：
             newContainer.innerHTML = target.snapshot;
             const oldContainer = document.querySelector('.container');
             oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
-            // 重新绑定可评论事件
-            document.querySelectorAll('.commentable').forEach(el => {
-                el.addEventListener('click', e => {
-                    if (e.target.closest('.stage-tab') || e.target.closest('.task-btn')) return;
-                    e.stopPropagation();
-                    openPanel(el.dataset.section);
-                });
-            });
+            // 重新注入模块评论按钮
+            injectModuleCommentBtns();
             closeVersions();
             await renderBadges();
             // 关键：把当前回滚后的状态作为新一版写入 Gist 顶部，
@@ -1004,14 +1039,23 @@ action说明：
             }
         }
 
-        document.querySelectorAll('.commentable').forEach(el => {
-            el.addEventListener('click', e => {
-                console.log('[click]', el.dataset.section, 'target:', e.target.tagName, e.target.className);
-                if (e.target.closest('.stage-tab') || e.target.closest('.task-btn') || e.target.closest('.view-btn') || e.target.closest('button')) return;
-                e.stopPropagation();
-                openPanel(el.dataset.section);
+        // 给每个 .commentable 注入"💬"角标按钮（hover 模块时才显示，点击才打开评论面板）
+        // 模块本身不再绑 click，避免长按选中、划词等被打断
+        function injectModuleCommentBtns() {
+            document.querySelectorAll('.commentable').forEach(el => {
+                if (el.querySelector('.module-comment-btn')) return; // 防重
+                const btn = document.createElement('button');
+                btn.className = 'module-comment-btn';
+                btn.title = '评论';
+                btn.textContent = '💬';
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openPanel(el.dataset.section);
+                });
+                el.appendChild(btn);
             });
-        });
+        }
+        injectModuleCommentBtns();
 
         // 输入框不监听回车，避免误触（兼容中英文输入法换行/确认）
         // 用户需点击按钮提交
@@ -1019,7 +1063,7 @@ action说明：
         setTimeout(() => {
             const h = document.getElementById('hintBar');
             if (h) {
-                h.textContent = '点击模块留下评论 · 评论实时同步云端';
+                h.textContent = '鼠标悬浮在模块上 · 点击右上角 💬 即可评论';
                 setTimeout(() => { h.style.opacity = '0'; setTimeout(() => h.style.display = 'none', 300); }, 4000);
             }
         }, 100);
@@ -1041,14 +1085,8 @@ action说明：
                         const oldContainer = document.querySelector('.container');
                         if (oldContainer && newContainer.firstElementChild) {
                             oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
-                            // 重新绑定事件
-                            document.querySelectorAll('.commentable').forEach(el => {
-                                el.addEventListener('click', e => {
-                                    if (e.target.closest('.stage-tab') || e.target.closest('.task-btn') || e.target.closest('.view-btn') || e.target.closest('button')) return;
-                                    e.stopPropagation();
-                                    openPanel(el.dataset.section);
-                                });
-                            });
+                            // 重新注入模块评论按钮
+                            injectModuleCommentBtns();
                             await renderBadges();
                             console.log(`[restore] 已恢复到云端 v${latest.v}（${latest.author} · ${latest.time}）`);
                         }
