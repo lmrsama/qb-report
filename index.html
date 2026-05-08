@@ -320,8 +320,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 kwp8lBhl46Jv3mmdVoSuKj/m+hv+VMRDKJeOe0Dt/ghLxvVBoLzzrO3PFoG3Sb3Wk9XCA5CIK5U9OozjoRTZAGfyrXsqZDj9pJKPzFDnRrTmYIYseuEZpQfJ0rfeWA9mC/HE9lOTwKf42nZlHgEBBxp9ZPMLrc0hbw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'kwp8lBhl46Jv3mmdVoSuKj/m+hv+VMRDKJeOe0Dt/ghLxvVBoLzzrO3PFoG3Sb3Wk9XCA5CIK5U9OozjoRTZAGfyrXsqZDj9pJKPzFDnRrTmYIYseuEZpQfJ0rfeWA9mC/HE9lOTwKf42nZlHgEBBxp9ZPMLrc0hbw==';
+        // 部署脚本会把 J0RznzHkJc0b+lOByab8i3hF7Ra6LvAJ6riDshlQnoQ2qyyWqYa1Tj5lUklIir5hHxMBUaXknjyGBLf6B7fxvT5vv4HBHArye/pM4IzldYkqXtvQ8tbRppcoFoUTXDrfpLbowPcvXXyCJnJlI6JLuDVcAFI5VgQ3iQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'J0RznzHkJc0b+lOByab8i3hF7Ra6LvAJ6riDshlQnoQ2qyyWqYa1Tj5lUklIir5hHxMBUaXknjyGBLf6B7fxvT5vv4HBHArye/pM4IzldYkqXtvQ8tbRppcoFoUTXDrfpLbowPcvXXyCJnJlI6JLuDVcAFI5VgQ3iQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -492,9 +492,16 @@
                 const isFailed = c.type === 'ai_failed';
                 let bgColor = '#f8f8f8';
                 let badge = '';
+                let extraBtn = '';
                 if (isAI) { bgColor = '#f0f7ff'; badge = `<span style="background:#667eea;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">⚡ AI已执行 v${c.version || '?'}</span>`; }
-                if (isPending) { bgColor = '#fffbe6'; badge = `<span style="background:#faad14;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">⏳ 处理中</span>`; }
-                if (isFailed) { bgColor = '#fff1f0'; badge = `<span style="background:#ff4d4f;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">❌ 失败</span>`; }
+                if (isPending) {
+                    bgColor = '#fffbe6';
+                    badge = `<span style="background:#faad14;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">⏳ 卡在处理中</span>`;
+                    extraBtn = `<button onclick="retryComment(${i})" style="margin-top:6px;font-size:10px;padding:3px 8px;background:#faad14;color:white;border:none;border-radius:4px;cursor:pointer;">重试</button>`;
+                }
+                if (isFailed) { bgColor = '#fff1f0'; badge = `<span style="background:#ff4d4f;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">❌ 失败</span>`;
+                    extraBtn = `<button onclick="retryComment(${i})" style="margin-top:6px;font-size:10px;padding:3px 8px;background:#667eea;color:white;border:none;border-radius:4px;cursor:pointer;">重试AI</button>`;
+                }
 
                 return `
                 <div style="padding:10px 12px;background:${bgColor};border-radius:8px;margin-bottom:8px;position:relative;">
@@ -502,8 +509,56 @@
                     <div style="font-size:9px;color:#999;margin-bottom:3px;">${c.author || '匿名'} · ${c.time}${badge}</div>
                     <div style="font-size:12px;color:#333;line-height:1.5;">${c.text.replace(/</g,'&lt;')}</div>
                     ${c.aiResponse ? `<div style="margin-top:6px;padding:6px 8px;background:white;border-radius:4px;font-size:11px;color:#666;border-left:2px solid #667eea;">${c.aiResponse.replace(/</g,'&lt;')}</div>` : ''}
+                    ${extraBtn}
                 </div>`;
             }).join('');
+        }
+
+        async function retryComment(idx) {
+            const comments = await loadFromCloud();
+            const c = comments[currentSection][idx];
+            if (!c) return;
+            const text = c.text;
+            const author = c.author;
+
+            const setBtnState = (loading) => {
+                const btns = document.querySelectorAll('.panel-footer button');
+                btns.forEach(b => b.disabled = loading);
+            };
+            setBtnState(true);
+
+            try {
+                const result = await callAIToModify(text, currentSection);
+                const sectionEl = document.querySelector(`[data-section="${currentSection}"]`);
+                if (result.action === 'replace_text' && result.target_selector && result.new_text) {
+                    const targets = sectionEl.querySelectorAll(result.target_selector);
+                    if (targets.length > 0) targets[0].textContent = result.new_text;
+                    else throw new Error('选择器未匹配：' + result.target_selector);
+                } else if (result.action === 'replace_html' && result.target_selector && result.new_html) {
+                    const targets = sectionEl.querySelectorAll(result.target_selector);
+                    if (targets.length > 0) targets[0].innerHTML = result.new_html;
+                    else throw new Error('选择器未匹配：' + result.target_selector);
+                } else {
+                    throw new Error('AI返回方案无法识别');
+                }
+                const versionNum = await saveVersion(text, author, currentSection);
+                const c2 = await loadFromCloud();
+                c2[currentSection][idx].type = 'ai_executed';
+                c2[currentSection][idx].version = versionNum;
+                c2[currentSection][idx].aiResponse = `${result.summary || '已修改'}（重试成功）`;
+                await saveToCloud(c2);
+            } catch (e) {
+                console.error('重试失败:', e);
+                const c2 = await loadFromCloud();
+                c2[currentSection][idx].type = 'ai_failed';
+                c2[currentSection][idx].aiResponse = '重试失败：' + e.message;
+                await saveToCloud(c2);
+                alert('重试失败：' + e.message);
+            } finally {
+                setBtnState(false);
+                await renderComments();
+                await renderBadges();
+            }
         }
 
         async function addComment(useAI) {
@@ -613,26 +668,47 @@
 
             const k = await ensureKeys();
             if (!k) throw new Error('未解锁，无法调用AI');
-            const res = await fetch(AI_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + k.aiKey,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: AI_MODEL,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userMessage }
-                    ],
-                    stream: false,
-                    temperature: 0.3
-                })
-            });
 
-            if (!res.ok) throw new Error('AI API调用失败 ' + res.status);
+            console.log('[AI] 开始调用 Deepseek...');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+
+            let res;
+            try {
+                res = await fetch(AI_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + k.aiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: AI_MODEL,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userMessage }
+                        ],
+                        stream: false,
+                        temperature: 0.3
+                    }),
+                    signal: controller.signal
+                });
+            } catch (e) {
+                if (e.name === 'AbortError') throw new Error('AI请求超时（>60s）');
+                throw new Error('网络错误：' + e.message);
+            } finally {
+                clearTimeout(timeoutId);
+            }
+
+            console.log('[AI] HTTP状态:', res.status);
+            if (!res.ok) {
+                const txt = await res.text().catch(() => '');
+                throw new Error('AI API失败 ' + res.status + ': ' + txt.substring(0, 200));
+            }
+
             const data = await res.json();
+            console.log('[AI] 完整响应:', data);
             let content = data.choices[0].message.content.trim();
+            console.log('[AI] 模型返回内容:', content);
 
             // 容错：去掉可能的markdown包裹
             content = content.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
