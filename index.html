@@ -372,8 +372,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 mxdqm4Q7DxfqtIHL69gBIt8RRxrOZADmlnyNyd1qDD6yxxzDZjNdxOOBo0U6zHfJIOmkye/aVbwvk+NLVBgSaxPbAfteWbIbtk5cU7O6qlmihhnuZI0stb3uevfRRpoawrGdGA4Q41pB96r3v1ZqydKXTSN1O3vOzA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'mxdqm4Q7DxfqtIHL69gBIt8RRxrOZADmlnyNyd1qDD6yxxzDZjNdxOOBo0U6zHfJIOmkye/aVbwvk+NLVBgSaxPbAfteWbIbtk5cU7O6qlmihhnuZI0stb3uevfRRpoawrGdGA4Q41pB96r3v1ZqydKXTSN1O3vOzA==';
+        // 部署脚本会把 HxDIX/taFfetg6GjQwu0dMpo1CNbjSAVvfXaAjSncCHJINZErPik1WRNidUWLiX1Nt9rgpQ9vBmO6jsoRlrD1fotRSVRhOteJk4MLIOVAdM8+pT2oNGwlgtBuzRu3lhjQDvlr8/ZJndzrZV25LaVEbAQh0Y3ecM8RQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'HxDIX/taFfetg6GjQwu0dMpo1CNbjSAVvfXaAjSncCHJINZErPik1WRNidUWLiX1Nt9rgpQ9vBmO6jsoRlrD1fotRSVRhOteJk4MLIOVAdM8+pT2oNGwlgtBuzRu3lhjQDvlr8/ZJndzrZV25LaVEbAQh0Y3ecM8RQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -396,7 +396,7 @@
                 console.warn('未配置加密密钥');
                 return null;
             }
-            const pwd = prompt('首次使用，请输入访问密码（向页面作者索取）：');
+            const pwd = prompt('使用 AI 修改需要密码（向页面作者索取）：');
             if (!pwd) return null;
             try {
                 const enc = new TextEncoder();
@@ -545,22 +545,27 @@
 
         async function renderBadges() {
             const comments = await loadFromCloud();
+            // 计数函数：只数"评论 Tab"应显示的条目（type 不是 ai_*）
+            const countNormal = (list) => (list || []).filter(c => {
+                return !(c.type === 'ai_executed' || c.type === 'ai_pending' || c.type === 'ai_failed');
+            }).length;
             document.querySelectorAll('.commentable').forEach(el => {
                 const section = el.dataset.section;
                 const list = comments[section] || [];
+                const n = countNormal(list);
                 const btn = el.querySelector('.module-comment-btn');
-                if (list.length > 0) {
+                if (n > 0) {
                     el.classList.add('has-comments');
-                    if (btn) btn.textContent = `评论(${list.length})`;
+                    if (btn) btn.textContent = `评论(${n})`;
                 } else {
                     el.classList.remove('has-comments');
                     if (btn) btn.textContent = '评论';
                 }
             });
-            // 全局评论 FAB 红点
+            // 全局评论 FAB 红点（只统计纯评论数）
             const fab = document.getElementById('globalCommentFab');
             if (fab) {
-                const globalCount = (comments._global || []).length;
+                const globalCount = countNormal(comments._global);
                 fab.classList.toggle('has-comments', globalCount > 0);
                 fab.title = globalCount > 0 ? `评论（${globalCount}条）` : '评论';
             }
@@ -573,8 +578,8 @@
             document.getElementById('commentPanel').classList.add('open');
             // 默认切到评论 Tab（每次打开重置）
             switchPanelTab('comment');
-            // 主动触发密码解锁
-            await unlockKeys();
+            // 静默尝试加载已缓存的密钥（不弹密码框）
+            await ensureKeys();
             await renderComments();
         }
 
@@ -680,9 +685,16 @@
             const text = input.value.trim();
             if (!text || !currentSection) return;
 
-            // 确保已解锁
-            const k = await unlockKeys();
-            if (!k) { alert('未解锁，无法保存评论到云端'); return; }
+            // 评论 = 静默尝试解锁（已缓存才走云端，没缓存就本地存，不弹密码）
+            // AI 修改 = 必须解锁（强制弹密码，AI 需要 aiKey）
+            let k;
+            if (useAI) {
+                k = await unlockKeys();
+                if (!k) { alert('AI 修改需要先验证密码'); return; }
+            } else {
+                k = await ensureKeys(); // 静默
+                // 没解锁也允许评论：会回退到本地存储，下次解锁后会自动同步
+            }
 
             let author = localStorage.getItem('comment_author');
             if (!author) {
@@ -691,10 +703,14 @@
             }
 
             const setBtnState = (loading) => {
-                const btns = document.querySelectorAll('.panel-footer button');
-                btns.forEach(b => b.disabled = loading);
-                if (btns[1]) btns[1].textContent = loading ? 'AI执行中...' : 'AI执行修改 ⚡';
-                if (btns[0]) btns[0].textContent = loading ? '处理中...' : '仅评论';
+                const btn = document.getElementById('panelSendBtn');
+                if (btn) {
+                    btn.disabled = loading;
+                    btn.style.opacity = loading ? '0.6' : '1';
+                    btn.textContent = loading
+                        ? (useAI ? 'AI 执行中...' : '发送中...')
+                        : (useAI ? '⚡ 用 AI 修改' : '发送');
+                }
             };
 
             setBtnState(true);
