@@ -127,7 +127,7 @@
 
         .view-switcher { position: fixed; top: 16px; left: 16px; display: flex; gap: 0; background: #f0f0f0; border-radius: 8px; padding: 3px; z-index: 999; }
 
-        /* 编辑模式 */
+        /* 开发者模式 */
         body.edit-mode #editModeBtn { background: #667eea !important; color: white !important; border-color: #667eea !important; }
         body.edit-mode .commentable { outline: 2px dashed #ffa500 !important; outline-offset: 4px; }
         body.edit-mode .commentable:hover::after { content: '✏️ 记录修改' !important; background: #ffa500 !important; }
@@ -216,7 +216,7 @@
 <button id="exportEditBtn" onclick="exportEditNotes()" style="display:none;padding:8px 14px;background:#667eea;border:none;border-radius:6px;font-size:12px;color:white;cursor:pointer;font-weight:500;">导出记录</button>
 <button id="globalNoteBtn" onclick="openGlobalNote()" style="display:none;padding:8px 14px;background:#fff4e6;border:1.5px solid #ffa500;border-radius:6px;font-size:12px;color:#b87300;cursor:pointer;">📝 全局备注</button>
 <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;" title="显示/隐藏评论标记">👁️</button>
-<button id="editModeBtn" onclick="toggleEditMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">✏️ 编辑模式</button>
+<button id="editModeBtn" onclick="toggleEditMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">✏️ 开发者模式</button>
 <button onclick="openVersions()" style="padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">版本历史</button>
 </div>
 <div class="container">
@@ -350,8 +350,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 TbBE0rJgzXB3Q8axGFk6u1uDMzgKXPWRP8sh2zkpayxJ1Ug9sD6E/jAEsYGnXRLfaHoz7DwNydu7tcW1XROTv7DAxam3VGptNyd2SJOM6spM2mIon4lzU6li+U1wLvs080ZK0/hZGJylrjhAtRcQM60IY0yZSeKhuw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'TbBE0rJgzXB3Q8axGFk6u1uDMzgKXPWRP8sh2zkpayxJ1Ug9sD6E/jAEsYGnXRLfaHoz7DwNydu7tcW1XROTv7DAxam3VGptNyd2SJOM6spM2mIon4lzU6li+U1wLvs080ZK0/hZGJylrjhAtRcQM60IY0yZSeKhuw==';
+        // 部署脚本会把 9zj5kuM8/Wmh68pVab6pnSNFTsDVh0keHn3O6got2VwCW9ZNbP6LzbPVKaRglVQ0efQSkl/k4rhZ+8bpggvROUUzhGslPA4JDUEDog1yFPliMh7eoGv71q/cnBXm+WOJ3a0gYl0BCZvumRU45CnsYnwVTwdfzXUBQg== 替换为实际加密数据
+        const ENCRYPTED_KEYS = '9zj5kuM8/Wmh68pVab6pnSNFTsDVh0keHn3O6got2VwCW9ZNbP6LzbPVKaRglVQ0efQSkl/k4rhZ+8bpggvROUUzhGslPA4JDUEDog1yFPliMh7eoGv71q/cnBXm+WOJ3a0gYl0BCZvumRU45CnsYnwVTwdfzXUBQg==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -932,7 +932,7 @@
             }
         })();
 
-        // ========= 编辑模式 =========
+        // ========= 开发者模式 =========
         // 存储结构：{ _global: [{text,time}], section_key: [{text,time}] }
         const EDIT_STORAGE_KEY = 'html_report_edit_notes_' + GIST_ID;
 
@@ -947,7 +947,7 @@
         function toggleEditMode() {
             const on = !isEditMode();
             document.body.classList.toggle('edit-mode', on);
-            document.getElementById('editModeBtn').textContent = on ? '✏️ 编辑模式（开启）' : '✏️ 编辑模式';
+            document.getElementById('editModeBtn').textContent = on ? '✏️ 开发者模式（开启）' : '✏️ 开发者模式';
             document.getElementById('globalNoteBtn').style.display = on ? '' : 'none';
             document.getElementById('exportEditBtn').style.display = on ? '' : 'none';
             renderEditBadges();
@@ -956,7 +956,7 @@
                 if (hint) {
                     hint.style.display = '';
                     hint.style.opacity = '0.9';
-                    hint.textContent = '🟡 编辑模式 · 点击模块记录修改 · 全局备注记录整体反馈 · 导出后粘贴给AI统一改';
+                    hint.textContent = '🟡 开发者模式 · 点击模块记录修改 · 全局备注记录整体反馈 · 导出后粘贴给AI统一改';
                     setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.style.display = 'none', 300); }, 5000);
                 }
             }
@@ -981,7 +981,7 @@
             });
         }
 
-        // 编辑模式下 openPanel 行为改变：显示记录界面而非评论
+        // 开发者模式下 openPanel 行为改变：显示记录界面而非评论
         const _originalOpenPanel = openPanel;
         openPanel = async function(s) {
             if (isEditMode()) {
@@ -1007,7 +1007,7 @@
             footer.innerHTML = `
                 <textarea id="commentInput" placeholder="记录这里要改什么（不需要AI执行，导出后统一给我改）" style="width:100%;height:60px;border:1px solid #e0e0e0;border-radius:6px;padding:8px;font-size:12px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
                 <button onclick="addEditNote('${s}')" style="margin-top:6px;width:100%;padding:8px;background:#ffa500;color:white;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;">添加记录</button>
-                <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;">退出编辑模式后，会恢复普通评论面板</div>
+                <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;">退出开发者模式后，会恢复普通评论面板</div>
             `;
         }
 
@@ -1110,7 +1110,7 @@
             }
         }
 
-        // 关闭面板时，如果是编辑模式，要恢复评论footer
+        // 关闭面板时，如果是开发者模式，要恢复评论footer
         const _origClosePanel = closePanel;
         closePanel = function() {
             _origClosePanel();
