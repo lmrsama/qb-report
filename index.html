@@ -126,14 +126,17 @@
 
         .view-switcher { position: fixed; top: 16px; left: 16px; display: flex; gap: 0; background: #f0f0f0; border-radius: 8px; padding: 3px; z-index: 999; }
 
-        /* 开发者模式 */
-        body.edit-mode #editModeBtn { background: #667eea !important; color: white !important; border-color: #667eea !important; }
-        body.edit-mode .commentable { outline: 2px dashed #ffa500 !important; outline-offset: 4px; }
-        body.edit-mode .commentable:hover::after { content: '✏️ 记录修改' !important; background: #ffa500 !important; }
-        body.edit-mode .commentable.has-edit-notes { outline: 2px solid #ffa500 !important; }
-        .edit-note-badge { position: absolute; top: -6px; left: -6px; width: 18px; height: 18px; background: #ffa500; color: white; font-size: 9px; font-weight: 600; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 5; }
+        /* 编辑模式：commentable 模块加虚线框，提示用户处于编辑态 */
+        body.editable-mode #modeToggleBtn { background: #667eea !important; color: white !important; border-color: #667eea !important; }
+        body.editable-mode .commentable { outline: 2px dashed #667eea !important; outline-offset: 4px; }
+        /* 隐藏只在编辑态使用的按钮 */
+        body:not(.editable-mode) .ai-only-btn { display: none !important; }
         .view-btn { padding: 6px 14px; border: none; background: transparent; cursor: pointer; font-size: 12px; color: #666; border-radius: 6px; transition: all 0.15s; }
         .view-btn.active { background: white; color: #333; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        /* 全局评论FAB：有评论时加红点 */
+        #globalCommentFab.has-comments::after { content: ''; position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; background: #ff4d4f; border: 2px solid white; border-radius: 50%; }
+        #globalCommentFab:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(102,126,234,0.5); }
 
         body.mobile-view .container { max-width: 420px; padding: 0 10px; }
         body.mobile-view .flow-row { flex-direction: column; gap: 20px; }
@@ -162,21 +165,6 @@
     </div>
     <div class="hint-bar" id="hintBar">点击任意模块可留下评论</div>
 
-    <!-- Global note modal -->
-    <div id="globalNoteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;align-items:center;justify-content:center;">
-        <div style="background:white;border-radius:12px;width:480px;max-height:70vh;overflow:hidden;display:flex;flex-direction:column;">
-            <div style="padding:14px 18px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
-                <h3 style="font-size:14px;font-weight:600;margin:0;">全局备注（跨模块的整体反馈）</h3>
-                <button onclick="closeGlobalNote()" style="border:none;background:#f0f0f0;width:24px;height:24px;border-radius:50%;cursor:pointer;">×</button>
-            </div>
-            <div style="padding:14px 18px;flex:1;overflow-y:auto;">
-                <div id="globalNoteList" style="margin-bottom:12px;"></div>
-                <textarea id="globalNoteInput" placeholder="全局修改诉求、整体方向调整、或跨模块的建议" style="width:100%;height:80px;border:1px solid #e0e0e0;border-radius:6px;padding:10px;font-size:13px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
-                <button onclick="addGlobalNote()" style="margin-top:8px;width:100%;padding:8px;background:#ffa500;color:white;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;">添加全局备注</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Comment panel -->
     <div class="comment-panel" id="commentPanel">
         <div class="panel-header">
@@ -198,9 +186,9 @@
             <textarea id="commentInput" placeholder="输入评论或修改诉求，例如：这里数字太大，改成5w"></textarea>
             <div style="display:flex;gap:6px;margin-top:6px;">
                 <button onclick="addComment(false)" style="flex:1;padding:7px;background:#f0f0f0;color:#333;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;">仅评论</button>
-                <button onclick="addComment(true)" style="flex:1.4;padding:7px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">AI执行修改 ⚡</button>
+                <button class="ai-only-btn" onclick="addComment(true)" style="flex:1.4;padding:7px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">AI执行修改 ⚡</button>
             </div>
-            <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;">仅评论：留言不修改 · AI执行：用混元AI实时修改HTML</div>
+            <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;" id="commentFooterHint">仅评论：留言不修改 · 进入编辑模式后可用 AI 实时修改 HTML</div>
         </div>
     </div>
 
@@ -214,13 +202,17 @@
             <div id="versionList" style="flex:1;overflow-y:auto;padding:14px 18px;"></div>
         </div>
     </div>
+    <!-- 顶部右上：所有模式都可见的常驻按钮 -->
     <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
-        <button id="exportEditBtn" onclick="exportEditNotes()" style="display:none;padding:8px 14px;background:#667eea;border:none;border-radius:6px;font-size:12px;color:white;cursor:pointer;font-weight:500;">导出记录</button>
-        <button id="globalNoteBtn" onclick="openGlobalNote()" style="display:none;padding:8px 14px;background:#fff4e6;border:1.5px solid #ffa500;border-radius:6px;font-size:12px;color:#b87300;cursor:pointer;">📝 全局备注</button>
         <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" title="显示/隐藏评论标记" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;">👁️</button>
-        <button id="editModeBtn" onclick="toggleEditMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">✏️ 开发者模式</button>
+        <button onclick="exportAllComments()" title="导出所有评论为Markdown" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">📤 导出评论</button>
+        <button id="modeToggleBtn" onclick="toggleEditableMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;font-weight:500;">📖 只读模式</button>
         <button onclick="openVersions()" style="padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">版本历史</button>
     </div>
+
+    <!-- 右下角悬浮：全局评论入口（所有模式都可见） -->
+    <button id="globalCommentFab" onclick="openPanel('_global')" title="全局评论（针对整个页面）"
+        style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#667eea;color:white;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(102,126,234,0.4);z-index:998;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">💬</button>
     <div class="container">
         <h1>QB权益卡 x 元宝导流链路</h1>
         <p class="subtitle">开卡场景曝光 → 元宝活动页承接 → 分阶段任务解锁VIP</p>
@@ -360,8 +352,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 u4MLkEnGXtZj0fYB7rejQ1tWArSfdvl32+B767wBjDBc7FnsaAHel+liPOttvK2c88kKfmC5F3uhygUCdLZgppMq0/UCTZ0VAZ0UPzjvyjQ1oraMoGfGoEsQM3e2bI8z2hnCisTWDRftaH4bFCAzoENGL0X6V4vIZA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'u4MLkEnGXtZj0fYB7rejQ1tWArSfdvl32+B767wBjDBc7FnsaAHel+liPOttvK2c88kKfmC5F3uhygUCdLZgppMq0/UCTZ0VAZ0UPzjvyjQ1oraMoGfGoEsQM3e2bI8z2hnCisTWDRftaH4bFCAzoENGL0X6V4vIZA==';
+        // 部署脚本会把 2LaNQiFiUVnUuibU7XGK0jeI3wlYm4TDsiBcyPXKnHZsOjPov0F7EXe7/6viB/D1FVA6v+/ENoPwbe54mtMbrl0o7nAdE3lPb+Ajycq91USh20dXbVIFOWxYb4jEHG05gDsNYCifL0xL2ir46Dr5c6KQ8faLOES3cQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = '2LaNQiFiUVnUuibU7XGK0jeI3wlYm4TDsiBcyPXKnHZsOjPov0F7EXe7/6viB/D1FVA6v+/ENoPwbe54mtMbrl0o7nAdE3lPb+Ajycq91USh20dXbVIFOWxYb4jEHG05gDsNYCifL0xL2ir46Dr5c6KQ8faLOES3cQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -409,11 +401,37 @@
 
         const STORAGE_KEY = 'qb_yb_report_comments';
         const sectionNames = {
+            '_global': '全局评论',
             'qb-exposure': 'QB曝光入口',
             'yb-activity': '元宝活动页',
             'settlement': '结算闭环',
             'detail-table': '阶梯对应表'
         };
+
+        // ========= 模式切换：只读 / 编辑 =========
+        const EDIT_PASSWORD = 'qb2026';
+        function isEditableMode() { return document.body.classList.contains('editable-mode'); }
+        function toggleEditableMode() {
+            const on = !isEditableMode();
+            if (on) {
+                // 进入编辑态需要密码
+                const pwd = prompt('进入编辑模式需要密码：');
+                if (pwd !== EDIT_PASSWORD) { if (pwd) alert('密码错误'); return; }
+            }
+            document.body.classList.toggle('editable-mode', on);
+            const btn = document.getElementById('modeToggleBtn');
+            if (btn) btn.textContent = on ? '✏️ 编辑模式' : '📖 只读模式';
+            // 提示
+            const hint = document.getElementById('hintBar');
+            if (hint) {
+                hint.style.display = '';
+                hint.style.opacity = '0.9';
+                hint.textContent = on
+                    ? '✏️ 编辑模式 · 点击模块可评论或用AI修改 · 点右下💬留全局评论'
+                    : '📖 只读模式 · 点击模块查看/留下评论 · 点右下💬留全局评论';
+                setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.style.display = 'none', 300); }, 4000);
+            }
+        }
 
         // ===== 云端存储（GitHub Gist）=====
         async function loadFromCloud() {
@@ -500,11 +518,31 @@
                     el.classList.remove('has-comments');
                 }
             });
+            // 全局评论 FAB 红点
+            const fab = document.getElementById('globalCommentFab');
+            if (fab) {
+                const globalCount = (comments._global || []).length;
+                fab.classList.toggle('has-comments', globalCount > 0);
+                fab.title = globalCount > 0 ? `全局评论（${globalCount}条）` : '全局评论（针对整个页面）';
+            }
         }
 
         async function openPanel(section) {
             currentSection = section;
-            document.getElementById('panelTitle').textContent = sectionNames[section] || '评论';
+            const isGlobal = section === '_global';
+            document.getElementById('panelTitle').textContent = isGlobal ? '🌐 全局评论' : (sectionNames[section] || '评论');
+            // 全局评论不支持 AI 执行（没有具体DOM元素）
+            const aiBtn = document.querySelector('.panel-footer .ai-only-btn');
+            if (aiBtn) aiBtn.style.display = isGlobal ? 'none' : '';
+            const hint = document.getElementById('commentFooterHint');
+            if (hint) hint.textContent = isGlobal
+                ? '全局评论：针对整个页面的反馈、整体方向调整等'
+                : '仅评论：留言不修改 · 进入编辑模式后可用 AI 实时修改 HTML';
+            // 输入框 placeholder
+            const ta = document.getElementById('commentInput');
+            if (ta) ta.placeholder = isGlobal
+                ? '针对整个页面的全局反馈或整体方向'
+                : '输入评论或修改诉求，例如：这里数字太大，改成5w';
             document.getElementById('commentPanel').classList.add('open');
             // 主动触发密码解锁
             await unlockKeys();
@@ -1008,205 +1046,60 @@ action说明：
             }
         })();
 
-        // ========= 开发者模式 =========
-        // 存储结构：{ _global: [{text,time}], section_key: [{text,time}] }
-        const EDIT_STORAGE_KEY = 'html_report_edit_notes_' + GIST_ID;
+        // ========= 一键导出全部评论（云端Gist里的所有评论 → Markdown） =========
+        async function exportAllComments() {
+            const all = await loadFromCloud();
+            const sections = Object.keys(all || {}).filter(k => Array.isArray(all[k]) && all[k].length > 0);
+            if (sections.length === 0) { alert('暂无评论可导出'); return; }
 
-        function getEditNotes() {
-            try { return JSON.parse(localStorage.getItem(EDIT_STORAGE_KEY)) || {}; } catch(e) { return {}; }
-        }
-        function saveEditNotes(n) {
-            localStorage.setItem(EDIT_STORAGE_KEY, JSON.stringify(n));
-        }
-        function isEditMode() { return document.body.classList.contains('edit-mode'); }
-
-        function toggleEditMode() {
-            const on = !isEditMode();
-            document.body.classList.toggle('edit-mode', on);
-            document.getElementById('editModeBtn').textContent = on ? '✏️ 开发者模式（开启）' : '✏️ 开发者模式';
-            document.getElementById('globalNoteBtn').style.display = on ? '' : 'none';
-            document.getElementById('exportEditBtn').style.display = on ? '' : 'none';
-            renderEditBadges();
-            if (on) {
-                const hint = document.getElementById('hintBar');
-                if (hint) {
-                    hint.style.display = '';
-                    hint.style.opacity = '0.9';
-                    hint.textContent = '🟡 开发者模式 · 点击模块记录修改 · 全局备注记录整体反馈 · 导出后粘贴给AI统一改';
-                    setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.style.display = 'none', 300); }, 5000);
-                }
-            }
-        }
-
-        function renderEditBadges() {
-            const notes = getEditNotes();
-            document.querySelectorAll('.commentable').forEach(el => {
-                const s = el.dataset.section;
-                const old = el.querySelector('.edit-note-badge');
-                if (old) old.remove();
-                const list = notes[s] || [];
-                if (list.length > 0 && isEditMode()) {
-                    el.classList.add('has-edit-notes');
-                    const b = document.createElement('div');
-                    b.className = 'edit-note-badge';
-                    b.textContent = list.length;
-                    el.appendChild(b);
-                } else {
-                    el.classList.remove('has-edit-notes');
-                }
-            });
-        }
-
-        // 开发者模式下 openPanel 行为改变：显示记录界面而非评论
-        const _originalOpenPanel = openPanel;
-        openPanel = async function(s) {
-            if (isEditMode()) {
-                openEditNoteForSection(s);
-                return;
-            }
-            return _originalOpenPanel(s);
-        };
-
-        function openEditNoteForSection(s) {
-            currentSection = s;
-            document.getElementById('panelTitle').textContent = '📝 记录：' + (sectionNames[s] || s);
-            document.getElementById('commentPanel').classList.add('open');
-            const notes = getEditNotes();
-            const list = notes[s] || [];
-            const body = document.getElementById('panelBody');
-            body.innerHTML = list.length === 0
-                ? '<div style="text-align:center;padding:24px;color:#999;font-size:12px;">还没有记录，下方输入后添加</div>'
-                : list.map((c, i) => `<div style="padding:10px 12px;background:#fff4e6;border:1px solid #ffd591;border-radius:8px;margin-bottom:8px;position:relative;"><button style="position:absolute;right:8px;top:8px;font-size:10px;color:#ccc;cursor:pointer;border:none;background:none;" onclick="deleteEditNote('${s}',${i})">删除</button><div style="font-size:9px;color:#999;margin-bottom:3px;">${c.time}</div><div style="font-size:12px;color:#333;line-height:1.5;">${c.text.replace(/</g,'&lt;')}</div></div>`).join('');
-
-            // 把footer的按钮暂时改成"添加记录"
-            const footer = document.querySelector('.panel-footer');
-            footer.innerHTML = `
-                <textarea id="commentInput" placeholder="记录这里要改什么（不需要AI执行，导出后统一给我改）" style="width:100%;height:60px;border:1px solid #e0e0e0;border-radius:6px;padding:8px;font-size:12px;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>
-                <button onclick="addEditNote('${s}')" style="margin-top:6px;width:100%;padding:8px;background:#ffa500;color:white;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;">添加记录</button>
-                <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;">退出开发者模式后，会恢复普通评论面板</div>
-            `;
-        }
-
-        function addEditNote(s) {
-            const input = document.getElementById('commentInput');
-            const text = input.value.trim();
-            if (!text) return;
-            const notes = getEditNotes();
-            if (!notes[s]) notes[s] = [];
-            notes[s].push({ text, time: new Date().toLocaleString('zh-CN') });
-            saveEditNotes(notes);
-            input.value = '';
-            openEditNoteForSection(s);
-            renderEditBadges();
-        }
-
-        function deleteEditNote(s, i) {
-            const notes = getEditNotes();
-            if (notes[s]) { notes[s].splice(i, 1); saveEditNotes(notes); openEditNoteForSection(s); renderEditBadges(); }
-        }
-
-        // 全局备注
-        function openGlobalNote() {
-            document.getElementById('globalNoteModal').style.display = 'flex';
-            renderGlobalNotes();
-        }
-        function closeGlobalNote() {
-            document.getElementById('globalNoteModal').style.display = 'none';
-        }
-        function renderGlobalNotes() {
-            const notes = getEditNotes();
-            const list = notes._global || [];
-            const body = document.getElementById('globalNoteList');
-            body.innerHTML = list.length === 0
-                ? '<div style="text-align:center;padding:16px;color:#999;font-size:12px;">还没有全局备注</div>'
-                : list.map((c, i) => `<div style="padding:10px;background:#fff4e6;border:1px solid #ffd591;border-radius:6px;margin-bottom:6px;position:relative;"><button style="position:absolute;right:6px;top:6px;font-size:10px;color:#ccc;cursor:pointer;border:none;background:none;" onclick="deleteGlobalNote(${i})">删除</button><div style="font-size:9px;color:#999;margin-bottom:3px;">${c.time}</div><div style="font-size:12px;color:#333;line-height:1.5;">${c.text.replace(/</g,'&lt;')}</div></div>`).join('');
-        }
-        function addGlobalNote() {
-            const input = document.getElementById('globalNoteInput');
-            const text = input.value.trim();
-            if (!text) return;
-            const notes = getEditNotes();
-            if (!notes._global) notes._global = [];
-            notes._global.push({ text, time: new Date().toLocaleString('zh-CN') });
-            saveEditNotes(notes);
-            input.value = '';
-            renderGlobalNotes();
-        }
-        function deleteGlobalNote(i) {
-            const notes = getEditNotes();
-            if (notes._global) { notes._global.splice(i, 1); saveEditNotes(notes); renderGlobalNotes(); }
-        }
-
-        // 一键导出 - 给AI用的格式
-        function exportEditNotes() {
-            const notes = getEditNotes();
-            const hasAny = (notes._global && notes._global.length) || Object.keys(notes).filter(k => k !== '_global' && notes[k].length > 0).length > 0;
-            if (!hasAny) { alert('暂无编辑记录可导出'); return; }
-
-            let out = '# HTML方案编辑记录 - 请根据以下要求修改HTML\n\n';
+            let out = '# HTML汇报 - 评论导出\n\n';
             out += `导出时间：${new Date().toLocaleString('zh-CN')}\n`;
-            out += `在线地址：${location.href}\n\n`;
-            out += `---\n\n`;
+            out += `在线地址：${location.href}\n\n---\n\n`;
 
-            // 全局备注
-            if (notes._global && notes._global.length > 0) {
-                out += `## 🌐 全局备注（跨模块/整体方向）\n\n`;
-                notes._global.forEach((n, i) => {
-                    out += `${i+1}. ${n.text}\n   _(记录时间: ${n.time})_\n\n`;
+            // 先输出全局评论
+            if (all._global && all._global.length > 0) {
+                out += `## 🌐 全局评论\n\n`;
+                all._global.forEach((c, i) => {
+                    out += `${i+1}. **${c.author || '匿名'}** _(${c.time})_${c.useAI ? ' · AI已执行' : ''}\n   ${c.text}\n`;
+                    if (c.aiResponse) out += `   > AI响应：${c.aiResponse}\n`;
+                    out += `\n`;
                 });
                 out += `---\n\n`;
             }
 
-            // 每个模块
-            out += `## 📍 各模块修改点\n\n`;
-            for (const [s, list] of Object.entries(notes)) {
-                if (s === '_global' || !list || list.length === 0) continue;
+            // 各模块
+            out += `## 📍 各模块评论\n\n`;
+            for (const s of sections) {
+                if (s === '_global') continue;
+                const list = all[s];
                 const name = sectionNames[s] || s;
                 out += `### 【${name}】 (section=${s})\n\n`;
-                list.forEach((n, i) => {
-                    out += `- ${n.text}\n  _(${n.time})_\n\n`;
+                list.forEach((c, i) => {
+                    out += `${i+1}. **${c.author || '匿名'}** _(${c.time})_${c.useAI ? ' · AI已执行' : ''}\n   ${c.text}\n`;
+                    if (c.aiResponse) out += `   > AI响应：${c.aiResponse}\n`;
+                    out += `\n`;
                 });
             }
-
-            out += `\n---\n\n## 执行说明\n`;
-            out += `1. 基于当前线上HTML（已有云端AI修改后的内容）进行修改\n`;
-            out += `2. 每个模块在HTML里用 data-section 标识，按上面的section key定位\n`;
-            out += `3. 全局备注涉及布局/整体风格的调整\n`;
-            out += `4. 修改后用 scripts/deploy.py 部署，脚本会自动合并线上版本\n`;
 
             const blob = new Blob([out], { type: 'text/markdown;charset=utf-8' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `方案编辑记录_${new Date().toISOString().slice(0,10)}_${new Date().toTimeString().slice(0,5).replace(':','')}.md`;
+            a.download = `汇报评论_${new Date().toISOString().slice(0,10)}_${new Date().toTimeString().slice(0,5).replace(':','')}.md`;
             a.click();
-
-            if (confirm('导出成功！是否清空当前编辑记录？')) {
-                saveEditNotes({});
-                renderEditBadges();
-            }
         }
 
-        // 关闭面板时，如果是开发者模式，要恢复评论footer
+        // 关闭面板时退出批量模式
         const _origClosePanel = closePanel;
         closePanel = function() {
             _origClosePanel();
-            // 关闭时同时退出批量模式
             document.body.classList.remove('batch-mode');
-            document.getElementById('batchToolbar').style.display = 'none';
-            document.getElementById('batchToggleBtn').textContent = '批量';
-            document.getElementById('batchToggleBtn').style.background = '#f0f0f0';
-            document.getElementById('batchToggleBtn').style.color = '#666';
-            // 恢复footer为普通评论UI
-            const footer = document.querySelector('.panel-footer');
-            if (footer && footer.innerHTML.indexOf('添加记录') !== -1) {
-                footer.innerHTML = `
-                    <textarea id="commentInput" placeholder="输入评论或修改诉求，例如：这里数字太大，改成5w"></textarea>
-                    <div style="display:flex;gap:6px;margin-top:6px;">
-                        <button onclick="addComment(false)" style="flex:1;padding:7px;background:#f0f0f0;color:#333;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;">仅评论</button>
-                        <button onclick="addComment(true)" style="flex:1.4;padding:7px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">AI执行修改 ⚡</button>
-                    </div>
-                    <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;">仅评论：留言不修改 · AI执行：用Deepseek实时修改HTML</div>
-                `;
+            const tb = document.getElementById('batchToolbar');
+            if (tb) tb.style.display = 'none';
+            const btb = document.getElementById('batchToggleBtn');
+            if (btb) {
+                btb.textContent = '批量';
+                btb.style.background = '#f0f0f0';
+                btb.style.color = '#666';
             }
         };
 
