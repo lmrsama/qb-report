@@ -103,7 +103,9 @@
         .commentable { position: relative; cursor: pointer; border-radius: 8px; transition: outline 0.15s; }
         .commentable:hover { outline: 2px dashed #667eea; outline-offset: 3px; }
         .commentable:hover::after { content: '点击评论'; position: absolute; top: -6px; right: -4px; background: #667eea; color: white; font-size: 9px; padding: 2px 6px; border-radius: 3px; z-index: 10; }
-        .commentable.has-comments { outline: 2px solid #ffa500; outline-offset: 2px; }
+        .commentable.has-comments { outline: none; }
+        body.show-comments .commentable.has-comments { outline: 2px solid #ffa500; outline-offset: 2px; }
+        body:not(.show-comments) .comment-badge { display: none; }
         .comment-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #ffa500; color: white; font-size: 8px; font-weight: 600; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 5; }
 
         /* Comment panel */
@@ -213,6 +215,7 @@
 <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
 <button id="exportEditBtn" onclick="exportEditNotes()" style="display:none;padding:8px 14px;background:#667eea;border:none;border-radius:6px;font-size:12px;color:white;cursor:pointer;font-weight:500;">导出记录</button>
 <button id="globalNoteBtn" onclick="openGlobalNote()" style="display:none;padding:8px 14px;background:#fff4e6;border:1.5px solid #ffa500;border-radius:6px;font-size:12px;color:#b87300;cursor:pointer;">📝 全局备注</button>
+<button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;" title="显示/隐藏评论标记">👁️</button>
 <button id="editModeBtn" onclick="toggleEditMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">✏️ 编辑模式</button>
 <button onclick="openVersions()" style="padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">版本历史</button>
 </div>
@@ -347,8 +350,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 BRPUxPHtggzJHgXjEoV0Q1ccyUKPwsRSdsqywNO0VAZl9gi6QZi3i3cN8zYkFCPrs39Wzch2iNi6CC3d45XW3q0JW3hN9LmPsezqp4XkdyR6UmTARMgWy7aIx9FGHl4j48WvTsuunxXYzhKe3xwl5w6ymW9EOIPAcA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'BRPUxPHtggzJHgXjEoV0Q1ccyUKPwsRSdsqywNO0VAZl9gi6QZi3i3cN8zYkFCPrs39Wzch2iNi6CC3d45XW3q0JW3hN9LmPsezqp4XkdyR6UmTARMgWy7aIx9FGHl4j48WvTsuunxXYzhKe3xwl5w6ymW9EOIPAcA==';
+        // 部署脚本会把 TbBE0rJgzXB3Q8axGFk6u1uDMzgKXPWRP8sh2zkpayxJ1Ug9sD6E/jAEsYGnXRLfaHoz7DwNydu7tcW1XROTv7DAxam3VGptNyd2SJOM6spM2mIon4lzU6li+U1wLvs080ZK0/hZGJylrjhAtRcQM60IY0yZSeKhuw== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'TbBE0rJgzXB3Q8axGFk6u1uDMzgKXPWRP8sh2zkpayxJ1Ug9sD6E/jAEsYGnXRLfaHoz7DwNydu7tcW1XROTv7DAxam3VGptNyd2SJOM6spM2mIon4lzU6li+U1wLvs080ZK0/hZGJylrjhAtRcQM60IY0yZSeKhuw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -905,6 +908,29 @@
 
         // 页面加载时只静默检查（不弹密码框），用户点击模块再触发解锁
         renderBadges();
+
+        // 评论可见性切换（默认根据localStorage，没记录就默认隐藏）
+        function toggleCommentVisibility() {
+            const on = !document.body.classList.contains('show-comments');
+            document.body.classList.toggle('show-comments', on);
+            localStorage.setItem('show_comments', on ? '1' : '0');
+            const btn = document.getElementById('toggleCommentVisBtn');
+            if (btn) {
+                btn.textContent = on ? '👁️' : '🚫';
+                btn.title = on ? '隐藏评论标记' : '显示评论标记';
+            }
+        }
+        // 初始化
+        (function initCommentVis() {
+            const saved = localStorage.getItem('show_comments');
+            const on = saved === '1';  // 默认隐藏
+            document.body.classList.toggle('show-comments', on);
+            const btn = document.getElementById('toggleCommentVisBtn');
+            if (btn) {
+                btn.textContent = on ? '👁️' : '🚫';
+                btn.title = on ? '隐藏评论标记' : '显示评论标记';
+            }
+        })();
 
         // ========= 编辑模式 =========
         // 存储结构：{ _global: [{text,time}], section_key: [{text,time}] }
