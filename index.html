@@ -320,8 +320,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 xY6XcC30Gek8N3XyRWKRb84S5Rr+UM4q8viqNHN9tFHvBODsSBSk1FtB4hLXA8xc2NyEL0c/7zAgWeQ1xsUra8OJzMI1t5WqdqBSp7+3mzO6RLXpdsG/q5Wmu621tZjOMm+irB2qv1pI+ODqKlacw/3Gw3jA9lS5FA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'xY6XcC30Gek8N3XyRWKRb84S5Rr+UM4q8viqNHN9tFHvBODsSBSk1FtB4hLXA8xc2NyEL0c/7zAgWeQ1xsUra8OJzMI1t5WqdqBSp7+3mzO6RLXpdsG/q5Wmu621tZjOMm+irB2qv1pI+ODqKlacw/3Gw3jA9lS5FA==';
+        // 部署脚本会把 kwp8lBhl46Jv3mmdVoSuKj/m+hv+VMRDKJeOe0Dt/ghLxvVBoLzzrO3PFoG3Sb3Wk9XCA5CIK5U9OozjoRTZAGfyrXsqZDj9pJKPzFDnRrTmYIYseuEZpQfJ0rfeWA9mC/HE9lOTwKf42nZlHgEBBxp9ZPMLrc0hbw== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'kwp8lBhl46Jv3mmdVoSuKj/m+hv+VMRDKJeOe0Dt/ghLxvVBoLzzrO3PFoG3Sb3Wk9XCA5CIK5U9OozjoRTZAGfyrXsqZDj9pJKPzFDnRrTmYIYseuEZpQfJ0rfeWA9mC/HE9lOTwKf42nZlHgEBBxp9ZPMLrc0hbw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -775,7 +775,8 @@
 
         document.querySelectorAll('.commentable').forEach(el => {
             el.addEventListener('click', e => {
-                if (e.target.closest('.stage-tab') || e.target.closest('.task-btn')) return;
+                console.log('[click]', el.dataset.section, 'target:', e.target.tagName, e.target.className);
+                if (e.target.closest('.stage-tab') || e.target.closest('.task-btn') || e.target.closest('.view-btn') || e.target.closest('button')) return;
                 e.stopPropagation();
                 openPanel(el.dataset.section);
             });
