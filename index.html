@@ -352,8 +352,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 2LaNQiFiUVnUuibU7XGK0jeI3wlYm4TDsiBcyPXKnHZsOjPov0F7EXe7/6viB/D1FVA6v+/ENoPwbe54mtMbrl0o7nAdE3lPb+Ajycq91USh20dXbVIFOWxYb4jEHG05gDsNYCifL0xL2ir46Dr5c6KQ8faLOES3cQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = '2LaNQiFiUVnUuibU7XGK0jeI3wlYm4TDsiBcyPXKnHZsOjPov0F7EXe7/6viB/D1FVA6v+/ENoPwbe54mtMbrl0o7nAdE3lPb+Ajycq91USh20dXbVIFOWxYb4jEHG05gDsNYCifL0xL2ir46Dr5c6KQ8faLOES3cQ==';
+        // 部署脚本会把 EDfNcVVGUB2f+1k9JwD5Syd4xtqoYVLgwgP6CsNWkk+SoobvBKahFKtS8m+2iSFBBt30J9GhHF5BseUFwo8TaibCNw0NKTXDccxrJ7KtorPkHoSDAtRQfWTCsV1c4diLAHefuLQ7bNZNc2wY431GFX3MGekjJNUE3A== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'EDfNcVVGUB2f+1k9JwD5Syd4xtqoYVLgwgP6CsNWkk+SoobvBKahFKtS8m+2iSFBBt30J9GhHF5BseUFwo8TaibCNw0NKTXDccxrJ7KtorPkHoSDAtRQfWTCsV1c4diLAHefuLQ7bNZNc2wY431GFX3MGekjJNUE3A==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
