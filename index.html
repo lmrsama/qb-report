@@ -320,8 +320,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 q3i9l/R0bf5EMAjLKCKVOpPkGYda6mbRuYgihuSkF47yGLwDfi9GkXIkvxFhMd86M30dv+LbqaOU1+cCvI2YTVc+jPA8SOuRHJtwdX6Umup6eZ/1qm+T5GvR7vJHC6/8zVhAzptzUwtr0Jpni1weYGWeOPe18DFXVg== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'q3i9l/R0bf5EMAjLKCKVOpPkGYda6mbRuYgihuSkF47yGLwDfi9GkXIkvxFhMd86M30dv+LbqaOU1+cCvI2YTVc+jPA8SOuRHJtwdX6Umup6eZ/1qm+T5GvR7vJHC6/8zVhAzptzUwtr0Jpni1weYGWeOPe18DFXVg==';
+        // 部署脚本会把 M92LWhSeTzX9gL23RBOzqsIKsJQiytGAVqhe1UaFtmw2kwS1aq5+i0hs/v72FEdHXvVZ/bqVEc4DUGDvp140O3OWDvXGhEUL8Kde7XdMPU9Q6qbgLTCRjJWfeyCXtRZ2k5eJ55mzjrnUM+afCnqawgw9H4BDMT+ynA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'M92LWhSeTzX9gL23RBOzqsIKsJQiytGAVqhe1UaFtmw2kwS1aq5+i0hs/v72FEdHXvVZ/bqVEc4DUGDvp140O3OWDvXGhEUL8Kde7XdMPU9Q6qbgLTCRjJWfeyCXtRZ2k5eJ55mzjrnUM+afCnqawgw9H4BDMT+ynA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -494,12 +494,12 @@
                 let extraBtn = '';
                 if (isAI) { bgColor = '#f0f7ff'; badge = `<span style="background:#667eea;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">⚡ AI已执行 v${c.version || '?'}</span>`; }
                 if (isPending) {
-                    bgColor = '#fffbe6';
-                    badge = `<span style="background:#faad14;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">⏳ 卡在处理中</span>`;
-                    extraBtn = `<button onclick="retryComment(${i})" style="margin-top:6px;font-size:10px;padding:3px 8px;background:#faad14;color:white;border:none;border-radius:4px;cursor:pointer;">重试</button>`;
+                    bgColor = '#f5f5f5';
+                    badge = `<span style="background:#bbb;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">⏳ 处理中</span>`;
+                    extraBtn = `<button onclick="retryComment(${i})" style="margin-top:4px;font-size:10px;padding:2px 8px;background:transparent;color:#888;border:1px solid #ccc;border-radius:3px;cursor:pointer;">如长时间无响应，点击重试</button>`;
                 }
                 if (isFailed) { bgColor = '#fff1f0'; badge = `<span style="background:#ff4d4f;color:white;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px;">❌ 失败</span>`;
-                    extraBtn = `<button onclick="retryComment(${i})" style="margin-top:6px;font-size:10px;padding:3px 8px;background:#667eea;color:white;border:none;border-radius:4px;cursor:pointer;">重试AI</button>`;
+                    extraBtn = `<button onclick="retryComment(${i})" style="margin-top:4px;font-size:10px;padding:2px 8px;background:transparent;color:#667eea;border:1px solid #667eea;border-radius:3px;cursor:pointer;">重试</button>`;
                 }
 
                 return `
@@ -857,9 +857,8 @@
             });
         });
 
-        document.getElementById('commentInput').addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(false); }
-        });
+        // 输入框不监听回车，避免误触（兼容中英文输入法换行/确认）
+        // 用户需点击按钮提交
 
         setTimeout(() => {
             const h = document.getElementById('hintBar');
