@@ -159,11 +159,6 @@
 <button class="view-btn active" onclick="setView('pc')">PC视图</button>
 <button class="view-btn" onclick="setView('mobile')">手机视图</button>
 </div>
-<div style="position:fixed;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:999;">
-<button id="editModeBtn" onclick="toggleEditMode()" style="padding:6px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">✏️ 编辑模式</button>
-<button id="globalNoteBtn" onclick="openGlobalNote()" style="display:none;padding:6px 14px;background:#fff4e6;border:1.5px solid #ffa500;border-radius:6px;font-size:12px;color:#b87300;cursor:pointer;">📝 全局备注</button>
-<button id="exportEditBtn" onclick="exportEditNotes()" style="display:none;padding:6px 14px;background:#667eea;border:none;border-radius:6px;font-size:12px;color:white;cursor:pointer;font-weight:500;">导出记录</button>
-</div>
 <div class="hint-bar" id="hintBar">点击任意模块可留下评论</div>
 <!-- Global note modal -->
 <div id="globalNoteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;align-items:center;justify-content:center;">
@@ -183,7 +178,17 @@
 <div class="comment-panel" id="commentPanel">
 <div class="panel-header">
 <h3 id="panelTitle">评论</h3>
+<div style="display:flex;gap:6px;align-items:center;">
+<button id="batchToggleBtn" onclick="toggleBatchMode()" style="font-size:11px;padding:4px 8px;background:#f0f0f0;border:none;border-radius:4px;cursor:pointer;color:#666;">批量</button>
 <button class="panel-close" onclick="closePanel()">×</button>
+</div>
+</div>
+<div id="batchToolbar" style="display:none;padding:8px 14px;background:#f5f5f5;border-bottom:1px solid #eee;font-size:11px;color:#666;align-items:center;justify-content:space-between;">
+<span><label style="cursor:pointer;"><input id="batchSelectAll" onchange="toggleSelectAll(this.checked)" style="vertical-align:middle;" type="checkbox"/> <span id="batchCountLabel">已选 0 项</span></label></span>
+<span style="display:flex;gap:6px;">
+<button onclick="batchExport()" style="font-size:11px;padding:3px 8px;background:#667eea;color:white;border:none;border-radius:3px;cursor:pointer;">导出</button>
+<button onclick="batchDelete()" style="font-size:11px;padding:3px 8px;background:#ff4d4f;color:white;border:none;border-radius:3px;cursor:pointer;">删除</button>
+</span>
 </div>
 <div class="panel-body" id="panelBody"></div>
 <div class="panel-footer">
@@ -205,7 +210,12 @@
 <div id="versionList" style="flex:1;overflow-y:auto;padding:14px 18px;"></div>
 </div>
 </div>
-<button onclick="openVersions()" style="position:fixed;top:16px;right:16px;padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;z-index:999;">版本历史</button>
+<div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
+<button id="exportEditBtn" onclick="exportEditNotes()" style="display:none;padding:8px 14px;background:#667eea;border:none;border-radius:6px;font-size:12px;color:white;cursor:pointer;font-weight:500;">导出记录</button>
+<button id="globalNoteBtn" onclick="openGlobalNote()" style="display:none;padding:8px 14px;background:#fff4e6;border:1.5px solid #ffa500;border-radius:6px;font-size:12px;color:#b87300;cursor:pointer;">📝 全局备注</button>
+<button id="editModeBtn" onclick="toggleEditMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">✏️ 编辑模式</button>
+<button onclick="openVersions()" style="padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">版本历史</button>
+</div>
 <div class="container">
 <h1>QB权益卡 x 元宝导流链路</h1>
 <p class="subtitle">开卡场景曝光 → 元宝活动页承接 → 分阶段任务解锁VIP</p>
@@ -337,8 +347,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 PFbZXud85UG4jX+AYQ82p8s5cWjH2z4Q+0ADcYuGsu0jIqmMVagqHWNNW3ft+HUMLWZ3OdgSZYrPqKLZgjzVAbt4hBUeSWp58A/lISZTgs1XlygiBRSe2q7/SLKLsIEgnrgGssw88UGrLbDE7mhek3eYQB8JAAtxLw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'PFbZXud85UG4jX+AYQ82p8s5cWjH2z4Q+0ADcYuGsu0jIqmMVagqHWNNW3ft+HUMLWZ3OdgSZYrPqKLZgjzVAbt4hBUeSWp58A/lISZTgs1XlygiBRSe2q7/SLKLsIEgnrgGssw88UGrLbDE7mhek3eYQB8JAAtxLw==';
+        // 部署脚本会把 BRPUxPHtggzJHgXjEoV0Q1ccyUKPwsRSdsqywNO0VAZl9gi6QZi3i3cN8zYkFCPrs39Wzch2iNi6CC3d45XW3q0JW3hN9LmPsezqp4XkdyR6UmTARMgWy7aIx9FGHl4j48WvTsuunxXYzhKe3xwl5w6ymW9EOIPAcA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'BRPUxPHtggzJHgXjEoV0Q1ccyUKPwsRSdsqywNO0VAZl9gi6QZi3i3cN8zYkFCPrs39Wzch2iNi6CC3d45XW3q0JW3hN9LmPsezqp4XkdyR6UmTARMgWy7aIx9FGHl4j48WvTsuunxXYzhKe3xwl5w6ymW9EOIPAcA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -497,6 +507,7 @@
             const comments = await loadFromCloud();
             const list = comments[currentSection] || [];
             const body = document.getElementById('panelBody');
+            const isBatch = document.body.classList.contains('batch-mode');
 
             if (list.length === 0) {
                 body.innerHTML = '<div style="text-align:center;padding:24px;color:#999;font-size:12px;">暂无评论，写下你的想法</div>';
@@ -519,15 +530,22 @@
                     extraBtn = `<button onclick="retryComment(${i})" style="margin-top:4px;font-size:10px;padding:2px 8px;background:transparent;color:#667eea;border:1px solid #667eea;border-radius:3px;cursor:pointer;">重试</button>`;
                 }
 
+                const checkbox = isBatch ? `<input type="checkbox" class="batch-cb" data-idx="${i}" onchange="updateBatchCount()" style="margin-right:8px;cursor:pointer;vertical-align:middle;">` : '';
+                const deleteBtn = isBatch ? '' : `<button style="position:absolute;right:8px;top:8px;font-size:10px;color:#ccc;cursor:pointer;border:none;background:none;" onclick="deleteComment(${i})">删除</button>`;
+
                 return `
-                <div style="padding:10px 12px;background:${bgColor};border-radius:8px;margin-bottom:8px;position:relative;">
-                    <button style="position:absolute;right:8px;top:8px;font-size:10px;color:#ccc;cursor:pointer;border:none;background:none;" onclick="deleteComment(${i})">删除</button>
-                    <div style="font-size:9px;color:#999;margin-bottom:3px;">${c.author || '匿名'} · ${c.time}${badge}</div>
-                    <div style="font-size:12px;color:#333;line-height:1.5;">${c.text.replace(/</g,'&lt;')}</div>
-                    ${c.aiResponse ? `<div style="margin-top:6px;padding:6px 8px;background:white;border-radius:4px;font-size:11px;color:#666;border-left:2px solid #667eea;">${c.aiResponse.replace(/</g,'&lt;')}</div>` : ''}
-                    ${extraBtn}
+                <div style="padding:10px 12px;background:${bgColor};border-radius:8px;margin-bottom:8px;position:relative;display:flex;align-items:flex-start;">
+                    ${checkbox}
+                    <div style="flex:1;min-width:0;">
+                        ${deleteBtn}
+                        <div style="font-size:9px;color:#999;margin-bottom:3px;">${c.author || '匿名'} · ${c.time}${badge}</div>
+                        <div style="font-size:12px;color:#333;line-height:1.5;">${c.text.replace(/</g,'&lt;')}</div>
+                        ${c.aiResponse ? `<div style="margin-top:6px;padding:6px 8px;background:white;border-radius:4px;font-size:11px;color:#666;border-left:2px solid #667eea;">${c.aiResponse.replace(/</g,'&lt;')}</div>` : ''}
+                        ${extraBtn}
+                    </div>
                 </div>`;
             }).join('');
+            if (isBatch) updateBatchCount();
         }
 
         async function retryComment(idx) {
@@ -1070,6 +1088,12 @@
         const _origClosePanel = closePanel;
         closePanel = function() {
             _origClosePanel();
+            // 关闭时同时退出批量模式
+            document.body.classList.remove('batch-mode');
+            document.getElementById('batchToolbar').style.display = 'none';
+            document.getElementById('batchToggleBtn').textContent = '批量';
+            document.getElementById('batchToggleBtn').style.background = '#f0f0f0';
+            document.getElementById('batchToggleBtn').style.color = '#666';
             // 恢复footer为普通评论UI
             const footer = document.querySelector('.panel-footer');
             if (footer && footer.innerHTML.indexOf('添加记录') !== -1) {
@@ -1083,6 +1107,79 @@
                 `;
             }
         };
+
+        // ========= 评论批量操作 =========
+        function toggleBatchMode() {
+            const on = !document.body.classList.contains('batch-mode');
+            document.body.classList.toggle('batch-mode', on);
+            const toolbar = document.getElementById('batchToolbar');
+            toolbar.style.display = on ? 'flex' : 'none';
+            const btn = document.getElementById('batchToggleBtn');
+            btn.textContent = on ? '取消' : '批量';
+            btn.style.background = on ? '#667eea' : '#f0f0f0';
+            btn.style.color = on ? 'white' : '#666';
+            document.getElementById('batchSelectAll').checked = false;
+            renderComments();
+        }
+
+        function toggleSelectAll(checked) {
+            document.querySelectorAll('.batch-cb').forEach(cb => cb.checked = checked);
+            updateBatchCount();
+        }
+
+        function updateBatchCount() {
+            const checked = document.querySelectorAll('.batch-cb:checked').length;
+            const total = document.querySelectorAll('.batch-cb').length;
+            document.getElementById('batchCountLabel').textContent = `已选 ${checked}/${total} 项`;
+            const allCb = document.getElementById('batchSelectAll');
+            allCb.checked = checked > 0 && checked === total;
+            allCb.indeterminate = checked > 0 && checked < total;
+        }
+
+        function getSelectedIndices() {
+            return Array.from(document.querySelectorAll('.batch-cb:checked')).map(cb => parseInt(cb.dataset.idx));
+        }
+
+        async function batchExport() {
+            const indices = getSelectedIndices();
+            if (indices.length === 0) { alert('未选中任何评论'); return; }
+            const comments = await loadFromCloud();
+            const list = comments[currentSection] || [];
+            const sectionName = sectionNames[currentSection] || currentSection;
+
+            let out = `# 评论导出 - ${sectionName}\n\n`;
+            out += `导出时间：${new Date().toLocaleString('zh-CN')}\n`;
+            out += `共 ${indices.length} 条评论\n\n---\n\n`;
+            indices.forEach((i, n) => {
+                const c = list[i];
+                if (!c) return;
+                let typeLabel = '';
+                if (c.type === 'ai_executed') typeLabel = ` [AI已执行 v${c.version}]`;
+                else if (c.type === 'ai_failed') typeLabel = ` [AI失败]`;
+                else if (c.type === 'ai_pending') typeLabel = ` [处理中]`;
+                out += `## ${n+1}. ${c.author || '匿名'} · ${c.time}${typeLabel}\n\n${c.text}\n\n`;
+                if (c.aiResponse) out += `> AI回复：${c.aiResponse}\n\n`;
+                out += `---\n\n`;
+            });
+
+            const blob = new Blob([out], { type: 'text/markdown;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `评论_${sectionName}_${new Date().toISOString().slice(0,10)}.md`;
+            a.click();
+        }
+
+        async function batchDelete() {
+            const indices = getSelectedIndices();
+            if (indices.length === 0) { alert('未选中任何评论'); return; }
+            if (!confirm(`确定删除选中的 ${indices.length} 条评论？此操作会同步到云端`)) return;
+            const comments = await loadFromCloud();
+            // 倒序删除避免索引错位
+            indices.sort((a,b) => b - a).forEach(i => comments[currentSection].splice(i, 1));
+            await saveToCloud(comments);
+            await renderComments();
+            await renderBadges();
+        }
     </script>
 </body>
 </html>
