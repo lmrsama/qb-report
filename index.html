@@ -202,12 +202,12 @@
             <div id="versionList" style="flex:1;overflow-y:auto;padding:14px 18px;"></div>
         </div>
     </div>
-    <!-- 顶部右上：所有模式都可见的常驻按钮 -->
+    <!-- 顶部右上：模式切换 + 编辑态才出现的辅助按钮 -->
     <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
         <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" title="显示/隐藏评论标记" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;">👁️</button>
-        <button onclick="exportAllComments()" title="导出所有评论为Markdown" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">📤 导出评论</button>
+        <button class="ai-only-btn" onclick="exportAllComments()" title="导出所有评论为Markdown" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">📤 导出评论</button>
+        <button class="ai-only-btn" onclick="openVersions()" style="padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">版本历史</button>
         <button id="modeToggleBtn" onclick="toggleEditableMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;font-weight:500;">📖 只读模式</button>
-        <button onclick="openVersions()" style="padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">版本历史</button>
     </div>
 
     <!-- 右下角悬浮：全局评论入口（所有模式都可见） -->
@@ -352,8 +352,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 EDfNcVVGUB2f+1k9JwD5Syd4xtqoYVLgwgP6CsNWkk+SoobvBKahFKtS8m+2iSFBBt30J9GhHF5BseUFwo8TaibCNw0NKTXDccxrJ7KtorPkHoSDAtRQfWTCsV1c4diLAHefuLQ7bNZNc2wY431GFX3MGekjJNUE3A== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'EDfNcVVGUB2f+1k9JwD5Syd4xtqoYVLgwgP6CsNWkk+SoobvBKahFKtS8m+2iSFBBt30J9GhHF5BseUFwo8TaibCNw0NKTXDccxrJ7KtorPkHoSDAtRQfWTCsV1c4diLAHefuLQ7bNZNc2wY431GFX3MGekjJNUE3A==';
+        // 部署脚本会把 LylFkmtEXv8Um+yoriAy68ljPLrgwvCOM6lzxFXzUdobNgXPaoOz1P7UX48Mu/qmSycuF6BVwXOexM4HAKWLJL2YvE3KhCffhWoF4RjeRF1tBzn7dSU/uX8Pp5mmhaVqDNXNkTuyqoF/y/5qOkZRooAxGcHuKAEU+Q== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'LylFkmtEXv8Um+yoriAy68ljPLrgwvCOM6lzxFXzUdobNgXPaoOz1P7UX48Mu/qmSycuF6BVwXOexM4HAKWLJL2YvE3KhCffhWoF4RjeRF1tBzn7dSU/uX8Pp5mmhaVqDNXNkTuyqoF/y/5qOkZRooAxGcHuKAEU+Q==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
