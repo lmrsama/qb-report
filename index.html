@@ -360,8 +360,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 kkCnibCqOYwV7ywO8n/W3zde2IdXkC6oPWwN2qztmpy7M4H+LiOWKdY0I6ERpSo52v0NWVtHK2FHFrnGkUo5+ozr3nZ/xNyN/yiG55/B2cNIsVLxsk2LU7PrePwSpgMooBJfNkylL86fF4NOzhXw73rOn6/9OGiZEQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'kkCnibCqOYwV7ywO8n/W3zde2IdXkC6oPWwN2qztmpy7M4H+LiOWKdY0I6ERpSo52v0NWVtHK2FHFrnGkUo5+ozr3nZ/xNyN/yiG55/B2cNIsVLxsk2LU7PrePwSpgMooBJfNkylL86fF4NOzhXw73rOn6/9OGiZEQ==';
+        // 部署脚本会把 u4MLkEnGXtZj0fYB7rejQ1tWArSfdvl32+B767wBjDBc7FnsaAHel+liPOttvK2c88kKfmC5F3uhygUCdLZgppMq0/UCTZ0VAZ0UPzjvyjQ1oraMoGfGoEsQM3e2bI8z2hnCisTWDRftaH4bFCAzoENGL0X6V4vIZA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'u4MLkEnGXtZj0fYB7rejQ1tWArSfdvl32+B767wBjDBc7FnsaAHel+liPOttvK2c88kKfmC5F3uhygUCdLZgppMq0/UCTZ0VAZ0UPzjvyjQ1oraMoGfGoEsQM3e2bI8z2hnCisTWDRftaH4bFCAzoENGL0X6V4vIZA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -577,17 +577,7 @@
             try {
                 const result = await callAIToModify(text, currentSection);
                 const sectionEl = document.querySelector(`[data-section="${currentSection}"]`);
-                if (result.action === 'replace_text' && result.target_selector && result.new_text) {
-                    const targets = sectionEl.querySelectorAll(result.target_selector);
-                    if (targets.length > 0) targets[0].textContent = result.new_text;
-                    else throw new Error('选择器未匹配：' + result.target_selector);
-                } else if (result.action === 'replace_html' && result.target_selector && result.new_html) {
-                    const targets = sectionEl.querySelectorAll(result.target_selector);
-                    if (targets.length > 0) targets[0].innerHTML = result.new_html;
-                    else throw new Error('选择器未匹配：' + result.target_selector);
-                } else {
-                    throw new Error('AI返回方案无法识别');
-                }
+                applyAIResult(result, sectionEl);
                 const versionNum = await saveVersion(text, author, currentSection);
                 const c2 = await loadFromCloud();
                 c2[currentSection][idx].type = 'ai_executed';
@@ -648,19 +638,12 @@
 
                 if (useAI) {
                     try {
+                        // 关键：AI修改前先存"修改前"快照（如果是第一次或上次的不是修改前的）
+                        await saveVersionIfNeeded('修改前自动备份', author, currentSection, true);
+
                         const result = await callAIToModify(text, currentSection);
                         const sectionEl = document.querySelector(`[data-section="${currentSection}"]`);
-                        if (result.action === 'replace_text' && result.target_selector && result.new_text) {
-                            const targets = sectionEl.querySelectorAll(result.target_selector);
-                            if (targets.length > 0) targets[0].textContent = result.new_text;
-                            else throw new Error('选择器未匹配：' + result.target_selector);
-                        } else if (result.action === 'replace_html' && result.target_selector && result.new_html) {
-                            const targets = sectionEl.querySelectorAll(result.target_selector);
-                            if (targets.length > 0) targets[0].innerHTML = result.new_html;
-                            else throw new Error('选择器未匹配：' + result.target_selector);
-                        } else {
-                            throw new Error('AI返回方案无法识别');
-                        }
+                        applyAIResult(result, sectionEl);
 
                         const versionNum = await saveVersion(text, author, currentSection);
                         const c2 = await loadFromCloud();
@@ -688,6 +671,40 @@
             }
         }
 
+        function applyAIResult(result, sectionEl) {
+            if (!result || !result.action) throw new Error('AI返回方案无法识别');
+            const sel = result.target_selector;
+            if (!sel) throw new Error('AI未返回target_selector');
+            const targets = sectionEl.querySelectorAll(sel);
+            if (targets.length === 0) throw new Error('选择器未匹配：' + sel);
+            const el = targets[0];
+
+            switch(result.action) {
+                case 'replace_text':
+                    el.textContent = result.new_text || '';
+                    break;
+                case 'replace_html':
+                    el.innerHTML = result.new_html || '';
+                    break;
+                case 'remove':
+                    el.remove();
+                    break;
+                case 'insert_before':
+                    el.insertAdjacentHTML('beforebegin', result.new_html || '');
+                    break;
+                case 'insert_after':
+                    el.insertAdjacentHTML('afterend', result.new_html || '');
+                    break;
+                case 'set_attr':
+                    if (!result.attr_name) throw new Error('set_attr 缺 attr_name');
+                    if (result.attr_value === '' || result.attr_value == null) el.removeAttribute(result.attr_name);
+                    else el.setAttribute(result.attr_name, result.attr_value);
+                    break;
+                default:
+                    throw new Error('未知action: ' + result.action);
+            }
+        }
+
         async function callAIToModify(userPrompt, sectionId) {
             const sectionEl = document.querySelector(`[data-section="${sectionId}"]`);
             if (!sectionEl) throw new Error('找不到模块');
@@ -696,20 +713,30 @@
             let html = sectionEl.outerHTML;
             if (html.length > 6000) html = html.substring(0, 6000) + '...';
 
-            const systemPrompt = `你是HTML修改助手。用户会给你一段HTML和修改诉求，你必须返回严格的JSON（不要有markdown代码块包裹），格式：
+            const systemPrompt = `你是HTML修改助手。用户给你一段HTML和修改诉求，返回严格的JSON（不要markdown代码块），格式：
 {
-  "action": "replace_text" 或 "replace_html",
-  "target_selector": "CSS选择器，必须能在给定HTML里精确匹配到要改的元素",
-  "new_text": "新文本（action=replace_text时使用，纯文本）",
-  "new_html": "新HTML（action=replace_html时使用）",
-  "summary": "一句话说明改了什么（中文）"
+  "action": "replace_text" | "replace_html" | "remove" | "insert_before" | "insert_after" | "set_attr",
+  "target_selector": "精确CSS选择器",
+  "new_text": "纯文本（action=replace_text）",
+  "new_html": "新HTML片段（action=replace_html / insert_before / insert_after）",
+  "attr_name": "属性名（action=set_attr）",
+  "attr_value": "属性值（action=set_attr，设为空字符串删除属性）",
+  "summary": "一句话中文说明（10-20字）"
 }
 
+action说明：
+- replace_text：只改文本内容（推荐）
+- replace_html：替换HTML，但要把原有非目标元素也保留下来，不要遗漏其他兄弟元素
+- remove：删除目标元素（用于去掉某个标签/边框/UI块）
+- insert_before/insert_after：在目标元素前/后插入HTML
+- set_attr：修改元素属性（如style、class），attr_value为空则删除属性
+
 规则：
-1. 优先用 replace_text 改纯文本
-2. CSS选择器要精确，可用class/属性组合，避免误改其他元素
-3. 不要返回任何JSON以外的内容
-4. summary 用中文，10-20字`;
+1. CSS选择器要精确，可用class组合或属性选择器
+2. 改样式（颜色/边框/背景）优先用 set_attr 改 style 或 class
+3. 用户说"删掉/去掉/不要XX" → 用 remove 或 set_attr 改 style 隐藏
+4. 不要返回JSON以外的内容
+5. summary 用中文，10-20字`;
 
             const userMessage = `当前模块HTML：\n\`\`\`html\n${html}\n\`\`\`\n\n用户诉求：${userPrompt}\n\n请返回JSON。`;
 
@@ -780,6 +807,15 @@
                 }
             } catch(e) {}
             return [];
+        }
+
+        // 仅当最新版本不是同一个snapshot时才保存（避免重复存）
+        async function saveVersionIfNeeded(prompt, author, sectionId, beforeChange) {
+            const snapshot = document.querySelector('.container').outerHTML;
+            const versions = await loadVersions();
+            // 如果已存在同样的snapshot作为最近一版，跳过
+            if (versions.length > 0 && versions[versions.length - 1].snapshot === snapshot) return;
+            return saveVersion(prompt, author, sectionId);
         }
 
         async function saveVersion(prompt, author, sectionId) {
