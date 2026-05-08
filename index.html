@@ -185,10 +185,10 @@
         <div class="panel-footer">
             <textarea id="commentInput" placeholder="输入评论或修改诉求，例如：这里数字太大，改成5w"></textarea>
             <div style="display:flex;gap:6px;margin-top:6px;">
-                <button onclick="addComment(false)" style="flex:1;padding:7px;background:#f0f0f0;color:#333;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;">仅评论</button>
+                <button onclick="addComment(false)" style="flex:1;padding:7px;background:#f0f0f0;color:#333;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;">发送评论</button>
                 <button class="ai-only-btn" onclick="addComment(true)" style="flex:1.4;padding:7px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">AI执行修改 ⚡</button>
             </div>
-            <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;" id="commentFooterHint">仅评论：留言不修改 · 进入编辑模式后可用 AI 实时修改 HTML</div>
+            <div style="margin-top:6px;font-size:10px;color:#999;line-height:1.5;" id="commentFooterHint">发送评论：留言不修改 · 进入编辑后可用 AI 实时修改 HTML</div>
         </div>
     </div>
 
@@ -204,14 +204,14 @@
     </div>
     <!-- 顶部右上：模式切换 + 编辑态才出现的辅助按钮 -->
     <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
-        <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" title="显示/隐藏评论标记" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;">👁️</button>
+        <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" title="显示评论标记" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;">🙈</button>
         <button class="ai-only-btn" onclick="exportAllComments()" title="导出所有评论为Markdown" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;">📤 导出评论</button>
         <button class="ai-only-btn" onclick="openVersions()" style="padding:8px 16px;background:#333;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">版本历史</button>
-        <button id="modeToggleBtn" onclick="toggleEditableMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;font-weight:500;">📖 只读模式</button>
+        <button id="modeToggleBtn" onclick="toggleEditableMode()" style="padding:8px 14px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;font-weight:500;">📖 只读</button>
     </div>
 
-    <!-- 右下角悬浮：全局评论入口（所有模式都可见） -->
-    <button id="globalCommentFab" onclick="openPanel('_global')" title="全局评论（针对整个页面）"
+    <!-- 右下角悬浮：评论入口 -->
+    <button id="globalCommentFab" onclick="openPanel('_global')" title="评论"
         style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#667eea;color:white;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(102,126,234,0.4);z-index:998;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">💬</button>
     <div class="container">
         <h1>QB权益卡 x 元宝导流链路</h1>
@@ -352,8 +352,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 LylFkmtEXv8Um+yoriAy68ljPLrgwvCOM6lzxFXzUdobNgXPaoOz1P7UX48Mu/qmSycuF6BVwXOexM4HAKWLJL2YvE3KhCffhWoF4RjeRF1tBzn7dSU/uX8Pp5mmhaVqDNXNkTuyqoF/y/5qOkZRooAxGcHuKAEU+Q== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'LylFkmtEXv8Um+yoriAy68ljPLrgwvCOM6lzxFXzUdobNgXPaoOz1P7UX48Mu/qmSycuF6BVwXOexM4HAKWLJL2YvE3KhCffhWoF4RjeRF1tBzn7dSU/uX8Pp5mmhaVqDNXNkTuyqoF/y/5qOkZRooAxGcHuKAEU+Q==';
+        // 部署脚本会把 NRJDTlas3LuKw9igX48OPa6qH2OQxzNNkS4mV2AOGSvkAgjlTjzEn5h1+IgrJWGxVIBrukAenLAQIZDRJolrMXvCxtvhoQhmPcpOJVajtJu0iBVbkWQ/G4nuaGPf8zkUkx+5NpCgx1/lLUYL1o9PYAhNVWFZ4eeG2A== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'NRJDTlas3LuKw9igX48OPa6qH2OQxzNNkS4mV2AOGSvkAgjlTjzEn5h1+IgrJWGxVIBrukAenLAQIZDRJolrMXvCxtvhoQhmPcpOJVajtJu0iBVbkWQ/G4nuaGPf8zkUkx+5NpCgx1/lLUYL1o9PYAhNVWFZ4eeG2A==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -420,15 +420,15 @@
             }
             document.body.classList.toggle('editable-mode', on);
             const btn = document.getElementById('modeToggleBtn');
-            if (btn) btn.textContent = on ? '✏️ 编辑模式' : '📖 只读模式';
+            if (btn) btn.textContent = on ? '✏️ 编辑' : '📖 只读';
             // 提示
             const hint = document.getElementById('hintBar');
             if (hint) {
                 hint.style.display = '';
                 hint.style.opacity = '0.9';
                 hint.textContent = on
-                    ? '✏️ 编辑模式 · 点击模块可评论或用AI修改 · 点右下💬留全局评论'
-                    : '📖 只读模式 · 点击模块查看/留下评论 · 点右下💬留全局评论';
+                    ? '✏️ 编辑态 · 点击模块可评论或用AI修改 · 点右下💬留评论'
+                    : '📖 只读态 · 点击模块查看/留下评论 · 点右下💬留评论';
                 setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.style.display = 'none', 300); }, 4000);
             }
         }
@@ -523,25 +523,25 @@
             if (fab) {
                 const globalCount = (comments._global || []).length;
                 fab.classList.toggle('has-comments', globalCount > 0);
-                fab.title = globalCount > 0 ? `全局评论（${globalCount}条）` : '全局评论（针对整个页面）';
+                fab.title = globalCount > 0 ? `评论（${globalCount}条）` : '评论';
             }
         }
 
         async function openPanel(section) {
             currentSection = section;
             const isGlobal = section === '_global';
-            document.getElementById('panelTitle').textContent = isGlobal ? '🌐 全局评论' : (sectionNames[section] || '评论');
+            document.getElementById('panelTitle').textContent = isGlobal ? '评论' : (sectionNames[section] || '评论');
             // 全局评论不支持 AI 执行（没有具体DOM元素）
             const aiBtn = document.querySelector('.panel-footer .ai-only-btn');
             if (aiBtn) aiBtn.style.display = isGlobal ? 'none' : '';
             const hint = document.getElementById('commentFooterHint');
             if (hint) hint.textContent = isGlobal
-                ? '全局评论：针对整个页面的反馈、整体方向调整等'
-                : '仅评论：留言不修改 · 进入编辑模式后可用 AI 实时修改 HTML';
+                ? '针对整个页面的反馈或整体方向'
+                : '发送评论：留言不修改 · 进入编辑后可用 AI 实时修改 HTML';
             // 输入框 placeholder
             const ta = document.getElementById('commentInput');
             if (ta) ta.placeholder = isGlobal
-                ? '针对整个页面的全局反馈或整体方向'
+                ? '针对整个页面的反馈或整体方向'
                 : '输入评论或修改诉求，例如：这里数字太大，改成5w';
             document.getElementById('commentPanel').classList.add('open');
             // 主动触发密码解锁
@@ -1030,7 +1030,7 @@ action说明：
             localStorage.setItem('show_comments', on ? '1' : '0');
             const btn = document.getElementById('toggleCommentVisBtn');
             if (btn) {
-                btn.textContent = on ? '👁️' : '🚫';
+                btn.textContent = on ? '👁️' : '🙈';
                 btn.title = on ? '隐藏评论标记' : '显示评论标记';
             }
         }
@@ -1041,7 +1041,7 @@ action说明：
             document.body.classList.toggle('show-comments', on);
             const btn = document.getElementById('toggleCommentVisBtn');
             if (btn) {
-                btn.textContent = on ? '👁️' : '🚫';
+                btn.textContent = on ? '👁️' : '🙈';
                 btn.title = on ? '隐藏评论标记' : '显示评论标记';
             }
         })();
