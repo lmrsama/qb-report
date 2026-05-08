@@ -320,8 +320,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 J0RznzHkJc0b+lOByab8i3hF7Ra6LvAJ6riDshlQnoQ2qyyWqYa1Tj5lUklIir5hHxMBUaXknjyGBLf6B7fxvT5vv4HBHArye/pM4IzldYkqXtvQ8tbRppcoFoUTXDrfpLbowPcvXXyCJnJlI6JLuDVcAFI5VgQ3iQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'J0RznzHkJc0b+lOByab8i3hF7Ra6LvAJ6riDshlQnoQ2qyyWqYa1Tj5lUklIir5hHxMBUaXknjyGBLf6B7fxvT5vv4HBHArye/pM4IzldYkqXtvQ8tbRppcoFoUTXDrfpLbowPcvXXyCJnJlI6JLuDVcAFI5VgQ3iQ==';
+        // 部署脚本会把 q3i9l/R0bf5EMAjLKCKVOpPkGYda6mbRuYgihuSkF47yGLwDfi9GkXIkvxFhMd86M30dv+LbqaOU1+cCvI2YTVc+jPA8SOuRHJtwdX6Umup6eZ/1qm+T5GvR7vJHC6/8zVhAzptzUwtr0Jpni1weYGWeOPe18DFXVg== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'q3i9l/R0bf5EMAjLKCKVOpPkGYda6mbRuYgihuSkF47yGLwDfi9GkXIkvxFhMd86M30dv+LbqaOU1+cCvI2YTVc+jPA8SOuRHJtwdX6Umup6eZ/1qm+T5GvR7vJHC6/8zVhAzptzUwtr0Jpni1weYGWeOPe18DFXVg==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -374,7 +374,6 @@
             'settlement': '结算闭环',
             'detail-table': '阶梯对应表'
         };
-        let currentSection = null;
 
         // ===== 云端存储（GitHub Gist）=====
         async function loadFromCloud() {
