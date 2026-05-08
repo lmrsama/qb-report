@@ -352,8 +352,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 NRJDTlas3LuKw9igX48OPa6qH2OQxzNNkS4mV2AOGSvkAgjlTjzEn5h1+IgrJWGxVIBrukAenLAQIZDRJolrMXvCxtvhoQhmPcpOJVajtJu0iBVbkWQ/G4nuaGPf8zkUkx+5NpCgx1/lLUYL1o9PYAhNVWFZ4eeG2A== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'NRJDTlas3LuKw9igX48OPa6qH2OQxzNNkS4mV2AOGSvkAgjlTjzEn5h1+IgrJWGxVIBrukAenLAQIZDRJolrMXvCxtvhoQhmPcpOJVajtJu0iBVbkWQ/G4nuaGPf8zkUkx+5NpCgx1/lLUYL1o9PYAhNVWFZ4eeG2A==';
+        // 部署脚本会把 xIiZf00ExyUJVJVs7QcZr8n4ZoLlapFhbUYXfmJ4F73RTzN5k9szfwxtzeVLOI/v3226zCuh34bFK84VqYik/S4IEemlncXEi97ZB/4hun9fLWP8HJc50yTFtFUs1JjV5bjPpvhs/HLeAXxsi0zjojHs3YLaA9lB0g== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'xIiZf00ExyUJVJVs7QcZr8n4ZoLlapFhbUYXfmJ4F73RTzN5k9szfwxtzeVLOI/v3226zCuh34bFK84VqYik/S4IEemlncXEi97ZB/4hun9fLWP8HJc50yTFtFUs1JjV5bjPpvhs/HLeAXxsi0zjojHs3YLaA9lB0g==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -713,7 +713,23 @@
             if (!result || !result.action) throw new Error('AI返回方案无法识别');
             const sel = result.target_selector;
             if (!sel) throw new Error('AI未返回target_selector');
-            const targets = sectionEl.querySelectorAll(sel);
+
+            // 查找目标：1) 先在sectionEl内部找子节点 2) 检查是否就是sectionEl自己 3) 兜底全局查
+            let targets = Array.from(sectionEl.querySelectorAll(sel));
+            if (targets.length === 0) {
+                // 检查sectionEl自身是否匹配（用于"删掉外层框"等场景）
+                try { if (sectionEl.matches(sel)) targets = [sectionEl]; } catch(e) {}
+            }
+            if (targets.length === 0) {
+                // 去掉运行时类（has-comments / has-edit-notes）后重试
+                const cleanSel = sel.replace(/\.has-comments|\.has-edit-notes/g, '');
+                if (cleanSel !== sel) {
+                    targets = Array.from(sectionEl.querySelectorAll(cleanSel));
+                    if (targets.length === 0) {
+                        try { if (sectionEl.matches(cleanSel)) targets = [sectionEl]; } catch(e) {}
+                    }
+                }
+            }
             if (targets.length === 0) throw new Error('选择器未匹配：' + sel);
             const el = targets[0];
 
@@ -725,6 +741,8 @@
                     el.innerHTML = result.new_html || '';
                     break;
                 case 'remove':
+                    // 不允许删除整个 commentable 模块（避免AI误判把整块删掉）
+                    if (el === sectionEl) throw new Error('不能删除整个模块容器，请明确删除内部具体元素');
                     el.remove();
                     break;
                 case 'insert_before':
@@ -747,8 +765,19 @@
             const sectionEl = document.querySelector(`[data-section="${sectionId}"]`);
             if (!sectionEl) throw new Error('找不到模块');
 
-            // 截取section的HTML，限制长度
-            let html = sectionEl.outerHTML;
+            // 截取section的HTML，限制长度。先克隆并剥离运行时类，避免AI生成不稳定选择器
+            const cloned = sectionEl.cloneNode(true);
+            const stripRuntimeClasses = (root) => {
+                const runtimeClasses = ['has-comments', 'has-edit-notes', 'open', 'active'];
+                root.querySelectorAll('*').forEach(n => {
+                    runtimeClasses.forEach(c => n.classList.remove(c));
+                });
+                runtimeClasses.forEach(c => root.classList.remove(c));
+                // 移除评论badge等动态注入的元素
+                root.querySelectorAll('.comment-badge, .edit-note-badge').forEach(n => n.remove());
+            };
+            stripRuntimeClasses(cloned);
+            let html = cloned.outerHTML;
             if (html.length > 6000) html = html.substring(0, 6000) + '...';
 
             const systemPrompt = `你是HTML修改助手。用户给你一段HTML和修改诉求，返回严格的JSON（不要markdown代码块），格式：
@@ -770,11 +799,12 @@ action说明：
 - set_attr：修改元素属性（如style、class），attr_value为空则删除属性
 
 规则：
-1. CSS选择器要精确，可用class组合或属性选择器
-2. 改样式（颜色/边框/背景）优先用 set_attr 改 style 或 class
-3. 用户说"删掉/去掉/不要XX" → 用 remove 或 set_attr 改 style 隐藏
-4. 不要返回JSON以外的内容
-5. summary 用中文，10-20字`;
+1. CSS选择器要稳定。**不要使用运行时class（has-comments / has-edit-notes / open / active 等动态状态类）**，优先用语义类（如 .badge / .settle-card）或属性选择器（如 [data-section]）
+2. 选择器在传入的"当前模块HTML"范围内查找。如果要操作的是模块根节点本身，可以直接用根节点的标签或属性选择器（例如 div[data-section="settlement"]）
+3. 改样式（颜色/边框/背景）优先用 set_attr 改 style 或 class
+4. 用户说"删掉/去掉/不要XX" → 用 remove 删除目标。**绝不能删除整个 commentable 模块根节点**（即整个传入的HTML外层div），如果用户的诉求是"删掉外层框"，那其实是要删除根节点内部的某个边框样式或子元素，请改用 set_attr 修改 style/class
+5. 不要返回JSON以外的内容
+6. summary 用中文，10-20字`;
 
             const userMessage = `当前模块HTML：\n\`\`\`html\n${html}\n\`\`\`\n\n用户诉求：${userPrompt}\n\n请返回JSON。`;
 
@@ -910,7 +940,7 @@ action说明：
         }
 
         async function restoreVersion(v) {
-            if (!confirm(`确定回滚到 v${v}？当前未保存的修改会丢失`)) return;
+            if (!confirm(`确定回滚到 v${v}？这会作为新版本写入历史，下次刷新就以这个为准。`)) return;
             const versions = await loadVersions();
             const target = versions.find(x => x.v === v);
             if (!target) return alert('版本不存在');
@@ -928,7 +958,11 @@ action说明：
             });
             closeVersions();
             await renderBadges();
-            alert('已回滚到 v' + v);
+            // 关键：把当前回滚后的状态作为新一版写入 Gist 顶部，
+            // 否则下次刷新时 restoreLatestSnapshot 会拉到原来的"最新"版本，等于回滚白做了
+            const author = localStorage.getItem('comment_author') || '匿名';
+            const newV = await saveVersion(`回滚到 v${v}`, author, target.section || null);
+            alert(`已回滚到 v${v}（已作为 v${newV} 写入历史）`);
         }
 
         async function deleteComment(i) {
