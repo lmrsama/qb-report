@@ -99,29 +99,30 @@
         .placeholder-note code { background: #fff3cd; padding: 1px 3px; border-radius: 2px; font-family: monospace; color: #874d00; font-size: 9px; }
 
         /* Commentable: 模块本身不再有 hover 虚线框、不再可点。
-           评论入口=右上角小按钮，hover 模块时才显示。 */
+           评论入口=右上角文字小按钮「评论(N)」，hover 模块时才显示；有评论时常显。 */
         .commentable { position: relative; border-radius: 8px; }
         .module-comment-btn {
-            position: absolute; top: -10px; right: -10px;
-            width: 28px; height: 28px;
+            position: absolute; top: 6px; right: 6px;
+            padding: 3px 8px;
             background: white;
-            border: 1.5px solid #e0e0e0;
-            border-radius: 50%;
-            font-size: 13px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #666;
             cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
             opacity: 0;
-            transition: opacity 0.15s, transform 0.15s, background 0.15s;
+            transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
             z-index: 10;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            line-height: 1.4;
+            white-space: nowrap;
         }
         .commentable:hover .module-comment-btn { opacity: 1; }
-        .module-comment-btn:hover { background: #667eea; color: white; transform: scale(1.1); border-color: #667eea; }
-        .commentable.has-comments .module-comment-btn { opacity: 1; background: #667eea; color: white; border-color: #667eea; }
-        body:not(.show-comments) .commentable.has-comments .module-comment-btn { background: white; color: #666; border-color: #e0e0e0; opacity: 0; }
-        body:not(.show-comments) .commentable.has-comments:hover .module-comment-btn { opacity: 1; }
-        body:not(.show-comments) .comment-badge { display: none; }
-        .comment-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: #ffa500; color: white; font-size: 8px; font-weight: 600; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 5; pointer-events: none; }
+        .module-comment-btn:hover { color: #667eea; border-color: #667eea; }
+        /* 有评论时常显，仍是白底，文字稍深 */
+        .commentable.has-comments .module-comment-btn { opacity: 1; color: #333; border-color: #d0d0d0; }
+        /* 隐藏评论标记（🙈 状态）：即使有评论也不常显，只在 hover 时出来，且文案不带计数 */
+        body:not(.show-comments) .commentable.has-comments .module-comment-btn { opacity: 0; color: #666; border-color: #e0e0e0; }
+        body:not(.show-comments) .commentable:hover .module-comment-btn { opacity: 1; }
 
         /* Comment panel */
         .comment-panel { position: fixed; right: 0; top: 0; width: 300px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.1); z-index: 1000; transform: translateX(100%); transition: transform 0.2s; display: flex; flex-direction: column; }
@@ -371,8 +372,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 0wZfYB6HjFWmTgpEzEH2rqp5wdLVT8EmXkV+C6nq4o7T8fVrC2wMqV0CcGPiVyzPbvCZ5EB5+JLx5wblVtGdjfR5WTU5bkFgyQ3nID/Jvw/8j/3A1IwCwOcdvg49bOnA4kBBVGLiIaHKW14A/Yo/frQyeY8w2lkZ8w== 替换为实际加密数据
-        const ENCRYPTED_KEYS = '0wZfYB6HjFWmTgpEzEH2rqp5wdLVT8EmXkV+C6nq4o7T8fVrC2wMqV0CcGPiVyzPbvCZ5EB5+JLx5wblVtGdjfR5WTU5bkFgyQ3nID/Jvw/8j/3A1IwCwOcdvg49bOnA4kBBVGLiIaHKW14A/Yo/frQyeY8w2lkZ8w==';
+        // 部署脚本会把 mxdqm4Q7DxfqtIHL69gBIt8RRxrOZADmlnyNyd1qDD6yxxzDZjNdxOOBo0U6zHfJIOmkye/aVbwvk+NLVBgSaxPbAfteWbIbtk5cU7O6qlmihhnuZI0stb3uevfRRpoawrGdGA4Q41pB96r3v1ZqydKXTSN1O3vOzA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'mxdqm4Q7DxfqtIHL69gBIt8RRxrOZADmlnyNyd1qDD6yxxzDZjNdxOOBo0U6zHfJIOmkye/aVbwvk+NLVBgSaxPbAfteWbIbtk5cU7O6qlmihhnuZI0stb3uevfRRpoawrGdGA4Q41pB96r3v1ZqydKXTSN1O3vOzA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -546,17 +547,14 @@
             const comments = await loadFromCloud();
             document.querySelectorAll('.commentable').forEach(el => {
                 const section = el.dataset.section;
-                const old = el.querySelector('.comment-badge');
-                if (old) old.remove();
                 const list = comments[section] || [];
+                const btn = el.querySelector('.module-comment-btn');
                 if (list.length > 0) {
                     el.classList.add('has-comments');
-                    const b = document.createElement('div');
-                    b.className = 'comment-badge';
-                    b.textContent = list.length;
-                    el.appendChild(b);
+                    if (btn) btn.textContent = `评论(${list.length})`;
                 } else {
                     el.classList.remove('has-comments');
+                    if (btn) btn.textContent = '评论';
                 }
             });
             // 全局评论 FAB 红点
@@ -814,8 +812,8 @@
                     runtimeClasses.forEach(c => n.classList.remove(c));
                 });
                 runtimeClasses.forEach(c => root.classList.remove(c));
-                // 移除评论badge等动态注入的元素
-                root.querySelectorAll('.comment-badge, .edit-note-badge').forEach(n => n.remove());
+                // 移除评论badge和模块评论按钮等动态注入的元素
+                root.querySelectorAll('.comment-badge, .edit-note-badge, .module-comment-btn').forEach(n => n.remove());
             };
             stripRuntimeClasses(cloned);
             let html = cloned.outerHTML;
@@ -1039,7 +1037,7 @@ action说明：
             }
         }
 
-        // 给每个 .commentable 注入"💬"角标按钮（hover 模块时才显示，点击才打开评论面板）
+        // 给每个 .commentable 注入"评论"角标按钮（hover 模块时才显示，点击才打开评论面板）
         // 模块本身不再绑 click，避免长按选中、划词等被打断
         function injectModuleCommentBtns() {
             document.querySelectorAll('.commentable').forEach(el => {
@@ -1047,7 +1045,7 @@ action说明：
                 const btn = document.createElement('button');
                 btn.className = 'module-comment-btn';
                 btn.title = '评论';
-                btn.textContent = '💬';
+                btn.textContent = '评论';
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     openPanel(el.dataset.section);
