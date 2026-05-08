@@ -306,19 +306,18 @@
 <div class="node-title">达标结算 + 权益到账</div>
 <div class="node-desc">用户每完成一个阶段<br/>QB发放对应天数VIP<br/>元宝按门槛结算费用</div>
 </div>
-<div class="settle-card">
-<div class="badge">⚠️ 具体结算逻辑，花姐和元宝侧确认中</div>
-<div class="settle-title">结算逻辑（待定）</div>
-<div class="settle-row"><div class="dot" style="background:#667eea"></div><div class="text">激活 → QB发+A天 / 元宝¥a</div></div>
-<div class="settle-row"><div class="dot" style="background:#4CAF50"></div><div class="text">次留达标 → QB发+B天 / 元宝¥b</div></div>
-<div class="settle-row"><div class="dot" style="background:#FF9800"></div><div class="text">深度使用 → QB发+C天 / 元宝¥c</div></div>
-<div class="settle-row"><div class="dot" style="background:#e91e63"></div><div class="text">7留达标 → QB发+D天 / 元宝¥d</div></div>
+<div class="settle-card"><div class="settle-card" style="background:white;">
+<div class="settle-title">结算逻辑</div>
+<div class="settle-row"><div class="dot" style="background:#667eea"></div><div class="text">激活 → QB发+1天 / 元宝¥5</div></div>
+<div class="settle-row"><div class="dot" style="background:#4CAF50"></div><div class="text">次留达标 → QB发+7天 / 元宝¥15</div></div>
+<div class="settle-row"><div class="dot" style="background:#FF9800"></div><div class="text">深度使用 → QB发+21天 / 元宝¥-</div></div>
+<div class="settle-row"><div class="dot" style="background:#e91e63"></div><div class="text">7留达标 → QB发+90天 / 元宝¥20</div></div>
 <div class="settle-total">
 <div class="main">全部达标 = ¥40/新增</div>
 <div class="sub">iOS: ¥100+/新增</div>
 </div>
-</div>
-<div class="comment-badge">4</div></div>
+</div></div>
+<div class="comment-badge">3</div></div>
 </div>
 <!-- Detail Table -->
 <div class="detail-section commentable" data-section="detail-table">
@@ -350,8 +349,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 9zj5kuM8/Wmh68pVab6pnSNFTsDVh0keHn3O6got2VwCW9ZNbP6LzbPVKaRglVQ0efQSkl/k4rhZ+8bpggvROUUzhGslPA4JDUEDog1yFPliMh7eoGv71q/cnBXm+WOJ3a0gYl0BCZvumRU45CnsYnwVTwdfzXUBQg== 替换为实际加密数据
-        const ENCRYPTED_KEYS = '9zj5kuM8/Wmh68pVab6pnSNFTsDVh0keHn3O6got2VwCW9ZNbP6LzbPVKaRglVQ0efQSkl/k4rhZ+8bpggvROUUzhGslPA4JDUEDog1yFPliMh7eoGv71q/cnBXm+WOJ3a0gYl0BCZvumRU45CnsYnwVTwdfzXUBQg==';
+        // 部署脚本会把 5ln1mlduyrje8ogvVQzM2cq0AGFtKN/co38bii8/ADSdxHFfViHzZEBaqk7vc2lDZ0MyfkwUfkVd4ItQ15MnXuxUB1jJ0N7s1f2paxa4fRYlq+9+IiNZAMZo5FuXwnAYMEGpeTQmbtu1V25Pppge6B8qUfdon0QFng== 替换为实际加密数据
+        const ENCRYPTED_KEYS = '5ln1mlduyrje8ogvVQzM2cq0AGFtKN/co38bii8/ADSdxHFfViHzZEBaqk7vc2lDZ0MyfkwUfkVd4ItQ15MnXuxUB1jJ0N7s1f2paxa4fRYlq+9+IiNZAMZo5FuXwnAYMEGpeTQmbtu1V25Pppge6B8qUfdon0QFng==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -908,6 +907,36 @@
 
         // 页面加载时只静默检查（不弹密码框），用户点击模块再触发解锁
         renderBadges();
+
+        // 启动时从云端拉取最新snapshot，恢复线上AI修改过的内容（如果localStorage有缓存的keys）
+        (async function restoreLatestSnapshot() {
+            const k = await ensureKeys();
+            if (!k) return; // 未解锁就不拉，等用户点模块时会触发解锁
+            try {
+                const versions = await loadVersions();
+                if (versions && versions.length > 0) {
+                    const latest = versions[versions.length - 1];
+                    if (latest.snapshot) {
+                        const newContainer = document.createElement('div');
+                        newContainer.innerHTML = latest.snapshot;
+                        const oldContainer = document.querySelector('.container');
+                        if (oldContainer && newContainer.firstElementChild) {
+                            oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
+                            // 重新绑定事件
+                            document.querySelectorAll('.commentable').forEach(el => {
+                                el.addEventListener('click', e => {
+                                    if (e.target.closest('.stage-tab') || e.target.closest('.task-btn') || e.target.closest('.view-btn') || e.target.closest('button')) return;
+                                    e.stopPropagation();
+                                    openPanel(el.dataset.section);
+                                });
+                            });
+                            await renderBadges();
+                            console.log(`[restore] 已恢复到云端 v${latest.v}（${latest.author} · ${latest.time}）`);
+                        }
+                    }
+                }
+            } catch(e) { console.warn('恢复snapshot失败', e); }
+        })();
 
         // 评论可见性切换（默认根据localStorage，没记录就默认隐藏）
         function toggleCommentVisibility() {
