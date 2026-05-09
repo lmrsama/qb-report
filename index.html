@@ -745,8 +745,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 9PVsS7gqOsrrmQ54uSvI9Q3+gT9kbzAWfNKH2hODxKf7qFKb0MDOroB6VrgZScEov4fNhn5nhBIx0k58048wZO5G1g0xTSjgREFcfNsM8c7nrcOsVMWbbvkxIfoTjaJjnBKDwH//RX8UTxDLynbqwak2MoKZcot8xQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = '9PVsS7gqOsrrmQ54uSvI9Q3+gT9kbzAWfNKH2hODxKf7qFKb0MDOroB6VrgZScEov4fNhn5nhBIx0k58048wZO5G1g0xTSjgREFcfNsM8c7nrcOsVMWbbvkxIfoTjaJjnBKDwH//RX8UTxDLynbqwak2MoKZcot8xQ==';
+        // 部署脚本会把 O0sg2B3+lgXgHqCvXdFgrcsuRRs/0gdd8qz15oMtjK0dNG1iShTt2z+ZPc+SFAeBLAri25He1METIcG9yaq8YgdivL/10N7cmfFpTH2DI4kquHPKVcrA3OdfSPH+/EJNWKQ8uU6rKFFHXgwDWNQF3grN+sOeW/OQpw== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'O0sg2B3+lgXgHqCvXdFgrcsuRRs/0gdd8qz15oMtjK0dNG1iShTt2z+ZPc+SFAeBLAri25He1METIcG9yaq8YgdivL/10N7cmfFpTH2DI4kquHPKVcrA3OdfSPH+/EJNWKQ8uU6rKFFHXgwDWNQF3grN+sOeW/OQpw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1453,14 +1453,7 @@
             if (sendBtn) sendBtn.disabled = true;
             try {
                 if (useAI) {
-                    // v2.11.20：超 6 个元素时提前 toast 提示
-                    const itemCount = currentMultiItems ? currentMultiItems.length : 1;
-                    if (itemCount > 6) {
-                        showTopToast(`Demo 版 AI 修改上限 6 个元素（已选 ${itemCount} 个），将只处理前 6 个。进阶诉求请用「💬 评论」留言`, 6000);
-                        await new Promise(r => setTimeout(r, 100)); // 让 toast 先渲染
-                    } else {
-                        showTopToast('AI 修改指令已发送，请稍等，进度可在 <a onclick="openAITabFromToast()">【AI 修改】</a> tab 里查看');
-                    }
+                    showTopToast('AI 修改指令已发送，请稍等，进度可在 <a onclick="openAITabFromToast()">【AI 修改】</a> tab 里查看');
                 }
                 await addComment(useAI);
             } finally {
@@ -1980,10 +1973,7 @@
 
         // 多元素批量 AI 修改：返回 [{target_id, action, ...}, ...]
         async function callAIToModifyMulti(userPrompt, items) {
-            // v2.11.20：超过 6 个时 toast 提示，只处理前 6 个
-            if (items.length > 6) {
-                showTopToast(`Demo 版 AI 修改上限 6 个元素，已选 ${items.length} 个，将只处理前 6 个。进阶诉求请用「💬 评论」留言`, 6000);
-            }
+            // 限制最多 6 个（toast 已在选中时提前提示）
             const lim = items.slice(0, 6);
             const blocks = lim.map((t, idx) => {
                 const el = document.querySelector(`[data-target-id="${t.targetId}"]`);
@@ -2384,6 +2374,10 @@
                 return;
             }
             document.body.classList.add('selection-mode');
+            // v2.11.21：选中超 6 个时立即 toast 提示（不等到发送）
+            if (selectedTargets.length === 7) {
+                showTopToast('Demo 版 AI 修改上限 6 个元素，超出部分不会被处理。进阶诉求请用「💬 评论」留言', 5000);
+            }
             // 显示小工具栏，定位到最后选中元素旁
             const last = selectedTargets[selectedTargets.length - 1];
             const el = document.querySelector(last.selector);
