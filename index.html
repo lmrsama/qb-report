@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>QB权益卡 x 元宝导流链路</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -742,8 +745,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 HdpEyi4aBEo+EHz44c29C4K8C+wV4fJrEf1Ya8vLCzTl4U7thN9MygSo7RZxxuZ0rZDCqcCX8hr3X5j5kKhx5rZYyhiNmTBmyqJqHXgsp7zDQDuTRLVU65No0XLilCoV8ZhZSglNkAz0LW52OpaQGlHe1jNMaIvMjA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'HdpEyi4aBEo+EHz44c29C4K8C+wV4fJrEf1Ya8vLCzTl4U7thN9MygSo7RZxxuZ0rZDCqcCX8hr3X5j5kKhx5rZYyhiNmTBmyqJqHXgsp7zDQDuTRLVU65No0XLilCoV8ZhZSglNkAz0LW52OpaQGlHe1jNMaIvMjA==';
+        // 部署脚本会把 gRQ/zZ9Wt7xn9OtvW7g86gcs0GdarztvA1d0rgKapsxIcSJf1y6S3saG8L+0dQFp6Fn/3B0G3mOlc+XliSt37R8L8BN1dc+xKKWFqAzGMSqKkAKaaObSBwJfVBlGICo/pXXGuCY1nbswXyVZ4aYKJGl1hxpM/L7kTw== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'gRQ/zZ9Wt7xn9OtvW7g86gcs0GdarztvA1d0rgKapsxIcSJf1y6S3saG8L+0dQFp6Fn/3B0G3mOlc+XliSt37R8L8BN1dc+xKKWFqAzGMSqKkAKaaObSBwJfVBlGICo/pXXGuCY1nbswXyVZ4aYKJGl1hxpM/L7kTw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
