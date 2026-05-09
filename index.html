@@ -738,8 +738,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 c3+iMHKrGTu3ORkYySeTOUKXa4RLY8OGz6u3qXrNAkPjL0H28kjwBaqdWkh23SoVVjNh+1jbzRCy59Q1/4msqKCgIvZi3/bv9aBtdmedU24sVZsKIMlp/eh/NMrNjZ8HpWIpDQDNrG30AXC8k8Wo+KDkf1h2xlJogA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'c3+iMHKrGTu3ORkYySeTOUKXa4RLY8OGz6u3qXrNAkPjL0H28kjwBaqdWkh23SoVVjNh+1jbzRCy59Q1/4msqKCgIvZi3/bv9aBtdmedU24sVZsKIMlp/eh/NMrNjZ8HpWIpDQDNrG30AXC8k8Wo+KDkf1h2xlJogA==';
+        // 部署脚本会把 btmC2OsfP3o2Uxsg7c+6myEiw+Az8LaGfxA8bcMES/QPbVmKSHobSZfRJOZrhC1U6CtDGy+RQ/Z4D4Yr4ww4gikM+6X/YW/gbjyq5I8UCkSh6KqRWdVeW+pQHmxATFndvjD51Tfy7I05hrLCFq/VipJXQJqKCJw1tA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'btmC2OsfP3o2Uxsg7c+6myEiw+Az8LaGfxA8bcMES/QPbVmKSHobSZfRJOZrhC1U6CtDGy+RQ/Z4D4Yr4ww4gikM+6X/YW/gbjyq5I8UCkSh6KqRWdVeW+pQHmxATFndvjD51Tfy7I05hrLCFq/VipJXQJqKCJw1tA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2300,7 +2300,7 @@
                 return;
             }
 
-            // ====== PC：⌘+click 或多选态下点元素 → 选中 ======
+            // ====== PC：⌘+click 或多选态下点元素 → 选中（唯一进入选中态的入口）======
             if (isCmd || inSel) {
                 const target = findTarget();
                 if (!target) {
@@ -2318,17 +2318,21 @@
                 return;
             }
 
-            // ====== PC：展示评论态 + 单击有评论元素 → 选中（弹气泡）======
+            // ====== PC：展示评论态 + 单击有评论元素 → 打开右侧评论区，过滤显示 ======
+            // 不进选中态、不弹小气泡。可继续在面板里追加新评论。
             if (showComments) {
                 const target = e.target.closest('[data-target-id].has-comments, .commentable[data-section].has-comments');
                 if (target) {
                     e.preventDefault();
                     e.stopPropagation();
-                    // 模块也要补 targetId
                     if (!target.dataset.targetId && target.dataset.section) {
                         target.dataset.targetId = 'mod-' + target.dataset.section;
                     }
-                    toggleTargetSelection(target);
+                    if (target.classList.contains('commentable-text') || target.classList.contains('commentable-image') || target.classList.contains('commentable-data')) {
+                        openPanel({ kind: 'target', el: target });
+                    } else {
+                        openPanel(target.dataset.section);
+                    }
                 }
             }
         }, true);
