@@ -394,8 +394,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 hr3W3jM9teyylbgxVIinoHUkUGewjk27Ate4od9IRq8g5G+2SfE3tU1Zz3ljfy2ovLxBYIlqP/iRwBhkOvHmTcgAetSAa5zLlUCLWDwJAybu3NUGThryajftDkqRqYAhsDPoiutP7EOidMWphPbBr5+71vMKuGEYiQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'hr3W3jM9teyylbgxVIinoHUkUGewjk27Ate4od9IRq8g5G+2SfE3tU1Zz3ljfy2ovLxBYIlqP/iRwBhkOvHmTcgAetSAa5zLlUCLWDwJAybu3NUGThryajftDkqRqYAhsDPoiutP7EOidMWphPbBr5+71vMKuGEYiQ==';
+        // 部署脚本会把 uLMFdNcz3u7klPjdNN1c3TLIn9OBaWNA5j+Q4NWa/ln6qkdn5jC2DhongVGGVYX0mV95ATQ9O7JtIbgPs+yviFUogp/u0sMXS+WCPFnOVgouidfzQ32NHxhZBjBOpbOvTg2N+v73nreE/O5s/0UIjXNlR3ZwWAOVOQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'uLMFdNcz3u7klPjdNN1c3TLIn9OBaWNA5j+Q4NWa/ln6qkdn5jC2DhongVGGVYX0mV95ATQ9O7JtIbgPs+yviFUogp/u0sMXS+WCPFnOVgouidfzQ32NHxhZBjBOpbOvTg2N+v73nreE/O5s/0UIjXNlR3ZwWAOVOQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1574,13 +1574,13 @@
                 if (el.dataset.targetBound) return;
                 el.dataset.targetBound = '1';
                 el.addEventListener('click', (e) => {
+                    console.log('[target click]', el.dataset.targetId, 'meta=', e.metaKey, 'ctrl=', e.ctrlKey, 'inSel=', isInSelectionMode());
                     if (e.metaKey || e.ctrlKey || isInSelectionMode()) {
                         e.preventDefault();
                         e.stopPropagation();
                         toggleTargetSelection(el);
                     }
-                }, true); // capture 阶段，抢在子元素的 inline onclick 之前
-                // 同样在 mousedown 阶段也拦一下（避免 inline onclick 在 mouseup 时触发）
+                }, true);
                 el.addEventListener('mousedown', (e) => {
                     if (e.metaKey || e.ctrlKey || isInSelectionMode()) {
                         e.preventDefault();
