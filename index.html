@@ -738,8 +738,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 btmC2OsfP3o2Uxsg7c+6myEiw+Az8LaGfxA8bcMES/QPbVmKSHobSZfRJOZrhC1U6CtDGy+RQ/Z4D4Yr4ww4gikM+6X/YW/gbjyq5I8UCkSh6KqRWdVeW+pQHmxATFndvjD51Tfy7I05hrLCFq/VipJXQJqKCJw1tA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'btmC2OsfP3o2Uxsg7c+6myEiw+Az8LaGfxA8bcMES/QPbVmKSHobSZfRJOZrhC1U6CtDGy+RQ/Z4D4Yr4ww4gikM+6X/YW/gbjyq5I8UCkSh6KqRWdVeW+pQHmxATFndvjD51Tfy7I05hrLCFq/VipJXQJqKCJw1tA==';
+        // 部署脚本会把 YgdNPTe53Bp/h8c5+r3VUXXSwy+XVPxws4FwmJrtC8Knmp6wCSsCW5NUcdLM0IUyJw3DcFy2rEW6cIZ1wUbcY5ws6IXvw4dMcyEzp6NIotic3HyxoigGekQ8T3kESRbLgtlYGd+4exirBuNv54Hmd7kQtaAaCqdDJQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'YgdNPTe53Bp/h8c5+r3VUXXSwy+XVPxws4FwmJrtC8Knmp6wCSsCW5NUcdLM0IUyJw3DcFy2rEW6cIZ1wUbcY5ws6IXvw4dMcyEzp6NIotic3HyxoigGekQ8T3kESRbLgtlYGd+4exirBuNv54Hmd7kQtaAaCqdDJQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1481,12 +1481,8 @@
                     e.preventDefault(); // 不让 button 失焦
                 }, true);
             }
-            // bubbleInput 容器同样阻止冒泡
-            const ti = document.getElementById('bubbleInput');
-            if (ti) {
-                ti.addEventListener('mousedown', (e) => e.stopPropagation(), true);
-                ti.addEventListener('click', (e) => e.stopPropagation(), true);
-            }
+            // bubbleInput 容器：不在 capture 阶段 stopPropagation（会阻止 button onclick 触发）
+            // document 顶部已经把 #bubbleInput 加进白名单 return 了，无需重复拦截
         });
 
         // 滚动/resize 时如果气泡显示中，重新定位
@@ -1612,15 +1608,8 @@
             }
         }
 
-        // 卡片自身阻止冒泡，避免被 document click handler 拦截
-        document.addEventListener('DOMContentLoaded', () => {
-            const card = document.getElementById('mobileCommentCard');
-            if (card) {
-                card.addEventListener('click', (e) => e.stopPropagation(), true);
-                card.addEventListener('mousedown', (e) => e.stopPropagation(), true);
-                card.addEventListener('touchstart', (e) => e.stopPropagation(), true);
-            }
-        });
+        // 卡片：不在 capture 阶段 stopPropagation（会阻止内部按钮 onclick 触发）
+        // document 顶部已经把 #mobileCommentCard 加进白名单 return，无需重复拦截
 
         async function addComment(useAI) {
             const input = document.getElementById('commentInput');
