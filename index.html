@@ -745,8 +745,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 o4QCOwKNgw/rq2kfYBwS8alBQzc/HPhM5UFW3HRJg3FvXhRVPOqJ4CgITVnzHjR0BwmMMbC38jrZg9fL9HBccUFeBRwDv7cZ+Owj7PAgLNpGBPucTDh9V6z35swoXCjE1IzbbsDtz17uthEE48ixB7dXmSHTgtyA1g== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'o4QCOwKNgw/rq2kfYBwS8alBQzc/HPhM5UFW3HRJg3FvXhRVPOqJ4CgITVnzHjR0BwmMMbC38jrZg9fL9HBccUFeBRwDv7cZ+Owj7PAgLNpGBPucTDh9V6z35swoXCjE1IzbbsDtz17uthEE48ixB7dXmSHTgtyA1g==';
+        // 部署脚本会把 9PVsS7gqOsrrmQ54uSvI9Q3+gT9kbzAWfNKH2hODxKf7qFKb0MDOroB6VrgZScEov4fNhn5nhBIx0k58048wZO5G1g0xTSjgREFcfNsM8c7nrcOsVMWbbvkxIfoTjaJjnBKDwH//RX8UTxDLynbqwak2MoKZcot8xQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = '9PVsS7gqOsrrmQ54uSvI9Q3+gT9kbzAWfNKH2hODxKf7qFKb0MDOroB6VrgZScEov4fNhn5nhBIx0k58048wZO5G1g0xTSjgREFcfNsM8c7nrcOsVMWbbvkxIfoTjaJjnBKDwH//RX8UTxDLynbqwak2MoKZcot8xQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1453,7 +1453,14 @@
             if (sendBtn) sendBtn.disabled = true;
             try {
                 if (useAI) {
-                    showTopToast('AI 修改指令已发送，请稍等，进度可在 <a onclick="openAITabFromToast()">【AI 修改】</a> tab 里查看');
+                    // v2.11.20：超 6 个元素时提前 toast 提示
+                    const itemCount = currentMultiItems ? currentMultiItems.length : 1;
+                    if (itemCount > 6) {
+                        showTopToast(`Demo 版 AI 修改上限 6 个元素（已选 ${itemCount} 个），将只处理前 6 个。进阶诉求请用「💬 评论」留言`, 6000);
+                        await new Promise(r => setTimeout(r, 100)); // 让 toast 先渲染
+                    } else {
+                        showTopToast('AI 修改指令已发送，请稍等，进度可在 <a onclick="openAITabFromToast()">【AI 修改】</a> tab 里查看');
+                    }
                 }
                 await addComment(useAI);
             } finally {
@@ -1764,7 +1771,9 @@
                 if (useAI) {
                     try {
                         const sectionForBackup = currentSection || (newComment.targets[0] && newComment.targets[0].section) || null;
-                        await saveVersionIfNeeded('修改前自动备份', author, sectionForBackup, true);
+                        // v2.11.21：只存操作前 snapshot（供回滚用），不再存操作后。
+                        // 回滚=恢复该 snapshot（即回到操作前状态）
+                        const versionNum = await saveVersion(text, author, sectionForBackup);
 
                         let result;
                         if (currentScope.kind === 'multi') {
@@ -1777,7 +1786,6 @@
                             applyAIResult(result, targetEl);
                         }
 
-                        const versionNum = await saveVersion(text, author, sectionForBackup);
                         const all2 = await loadAllComments();
                         all2[commentIdx].type = 'ai_executed';
                         all2[commentIdx].version = versionNum;
@@ -2129,10 +2137,10 @@
                 <div style="padding:12px;background:#f8f8f8;border-radius:8px;margin-bottom:8px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                         <span style="font-size:13px;font-weight:600;color:#333;">v${v.v}</span>
-                        <button onclick="restoreVersion(${v.v})" style="font-size:11px;padding:4px 10px;background:#667eea;color:white;border:none;border-radius:4px;cursor:pointer;">回滚到此版本</button>
+                        <button onclick="restoreVersion(${v.v})" style="font-size:11px;padding:4px 10px;background:#667eea;color:white;border:none;border-radius:4px;cursor:pointer;">↩️ 撤回此操作</button>
                     </div>
                     <div style="font-size:10px;color:#999;margin-bottom:4px;">${v.author} · ${v.time}</div>
-                    <div style="font-size:12px;color:#333;">${(v.prompt || '').replace(/</g,'&lt;')}</div>
+                    <div style="font-size:12px;color:#333;">操作：${(v.prompt || '').replace(/</g,'&lt;')}</div>
                 </div>
             `).join('');
         }
@@ -2166,7 +2174,7 @@
         }
 
         async function restoreVersion(v) {
-            if (!confirm(`确定撤回到 v${v}？这会撤销 v${v} 之后的所有改动。`)) return;
+            if (!confirm(`确定撤回此操作？页面将恢复到该操作执行前的状态。`)) return;
             const versions = await loadVersions();
             const target = versions.find(x => x.v === v);
             if (!target) return alert('版本不存在');
