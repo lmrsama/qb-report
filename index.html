@@ -145,6 +145,21 @@
         #multiSelectBar button.danger { background: transparent; color: #999; padding: 5px 6px; }
         #multiSelectBar button:hover { filter: brightness(0.95); }
 
+        /* 框选矩形（按 ⌘+拖拽 触发） */
+        #marqueeBox {
+            position: absolute;
+            border: 1.5px solid #667eea;
+            background: rgba(102,126,234,0.08);
+            pointer-events: none;
+            z-index: 1099;
+            display: none;
+        }
+        /* 拖拽时禁用文本选中，避免视觉干扰 */
+        body.marquee-dragging, body.marquee-dragging * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+        }
+
         /* Comment panel */
         .comment-panel { position: fixed; right: 0; top: 0; width: 300px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.1); z-index: 1000; transform: translateX(100%); transition: transform 0.2s; display: flex; flex-direction: column; }
         .comment-panel.open { transform: translateX(0); }
@@ -258,6 +273,9 @@
         <button class="primary" onclick="openMultiSelectPanel('ai')">⚡ AI 修改</button>
         <button class="danger" onclick="exitSelectionMode()" title="退出多选">✕</button>
     </div>
+
+    <!-- 框选矩形（⌘+拖拽 时显示） -->
+    <div id="marqueeBox"></div>
 
     <!-- 右下角悬浮：评论入口 -->
     <button id="globalCommentFab" onclick="openPanel({kind:'all'})" title="评论中心"
@@ -401,8 +419,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 loJxhE6P2iyV0NM5S0Wj+XMnNpxo6SsIELKQx7KgOKo9KlW1hYdWr3ykUTk7+v50eS71pSstV0TPA+D3lN+rLqF5vyeHv8POtzQJLbAfmjikDlVDCvD4792Dtb9N7+BAjrpNjavNfOxxUAc7Svz/3j2ngQ0nvH9new== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'loJxhE6P2iyV0NM5S0Wj+XMnNpxo6SsIELKQx7KgOKo9KlW1hYdWr3ykUTk7+v50eS71pSstV0TPA+D3lN+rLqF5vyeHv8POtzQJLbAfmjikDlVDCvD4792Dtb9N7+BAjrpNjavNfOxxUAc7Svz/3j2ngQ0nvH9new==';
+        // 部署脚本会把 MPDlEEwhcpbNGPxcuWGwMYHGxsodTnYBmhkkapeleY83gjzPc/yOsl/zH7otA3fqYhdMJmaPuayiQaLHCS2kAGhX0VAgtCXtVfBoD3mex9HA1R3IUeuimRrqhRVCO9MIiEMd1X+fqK+gGfq67w20KwVXPrcNyC+Ekw== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'MPDlEEwhcpbNGPxcuWGwMYHGxsodTnYBmhkkapeleY83gjzPc/yOsl/zH7otA3fqYhdMJmaPuayiQaLHCS2kAGhX0VAgtCXtVfBoD3mex9HA1R3IUeuimRrqhRVCO9MIiEMd1X+fqK+gGfq67w20KwVXPrcNyC+Ekw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1630,6 +1648,101 @@
             if (e.key === 'Escape' && isInSelectionMode()) {
                 exitSelectionMode();
             }
+        });
+
+        // ========= 框选（⌘/Ctrl + 鼠标拖拽 选中区域内的 commentable-* 元素） =========
+        let marquee = { active: false, startX: 0, startY: 0 };
+        document.addEventListener('mousedown', (e) => {
+            // 仅左键 + 按住 ⌘/Ctrl 时启动框选
+            if (e.button !== 0 || !(e.metaKey || e.ctrlKey)) return;
+            // 在工具栏 / 评论面板 / FAB 等 UI 控件上不触发
+            if (e.target.closest('#multiSelectBar, #commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn')) return;
+            // 在已经标记的 commentable-* 元素上点击 → 走单击逻辑（toggleTargetSelection），不框选
+            if (e.target.closest('.commentable-text, .commentable-image, .commentable-data')) return;
+
+            marquee.active = true;
+            marquee.startX = e.pageX;
+            marquee.startY = e.pageY;
+            const box = document.getElementById('marqueeBox');
+            box.style.display = 'block';
+            box.style.left = e.pageX + 'px';
+            box.style.top = e.pageY + 'px';
+            box.style.width = '0px';
+            box.style.height = '0px';
+            document.body.classList.add('marquee-dragging');
+            e.preventDefault(); // 阻止默认的文本选中
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!marquee.active) return;
+            const x = Math.min(e.pageX, marquee.startX);
+            const y = Math.min(e.pageY, marquee.startY);
+            const w = Math.abs(e.pageX - marquee.startX);
+            const h = Math.abs(e.pageY - marquee.startY);
+            const box = document.getElementById('marqueeBox');
+            box.style.left = x + 'px';
+            box.style.top = y + 'px';
+            box.style.width = w + 'px';
+            box.style.height = h + 'px';
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (!marquee.active) return;
+            marquee.active = false;
+            document.body.classList.remove('marquee-dragging');
+            const box = document.getElementById('marqueeBox');
+            const boxRect = {
+                left: parseFloat(box.style.left),
+                top: parseFloat(box.style.top),
+                right: parseFloat(box.style.left) + parseFloat(box.style.width),
+                bottom: parseFloat(box.style.top) + parseFloat(box.style.height)
+            };
+            box.style.display = 'none';
+
+            // 太小的拖动当点击处理（不框选）
+            const minSize = 6;
+            if (parseFloat(box.style.width) < minSize && parseFloat(box.style.height) < minSize) return;
+
+            // 找到 boxRect 范围内的所有 commentable-* 元素，加入选区
+            let lastEl = null;
+            document.querySelectorAll('.commentable-text, .commentable-image, .commentable-data').forEach(el => {
+                const r = el.getBoundingClientRect();
+                const elRect = {
+                    left: r.left + window.scrollX,
+                    top: r.top + window.scrollY,
+                    right: r.right + window.scrollX,
+                    bottom: r.bottom + window.scrollY
+                };
+                // 相交即选中
+                const overlap = !(elRect.right < boxRect.left || elRect.left > boxRect.right
+                    || elRect.bottom < boxRect.top || elRect.top > boxRect.bottom);
+                if (overlap) {
+                    const tid = el.dataset.targetId;
+                    if (!selectedTargets.find(t => t.targetId === tid)) {
+                        const sectionEl = el.closest('.commentable[data-section]');
+                        selectedTargets.push({
+                            targetId: tid,
+                            section: sectionEl ? sectionEl.dataset.section : null,
+                            label: getTargetLabel(el),
+                            selector: getStableSelector(el)
+                        });
+                        el.classList.add('selected-target');
+                        lastEl = el;
+                    }
+                }
+            });
+            updateMultiSelectBar(lastEl);
+        });
+
+        // ========= 点空白处退出多选 =========
+        document.addEventListener('click', (e) => {
+            if (!isInSelectionMode()) return;
+            // 点工具栏 / 评论面板 / FAB / 版本modal / commentable 元素 都不算空白
+            if (e.target.closest('#multiSelectBar, #commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn')) return;
+            if (e.target.closest('.commentable-text, .commentable-image, .commentable-data')) return;
+            // ⌘/Ctrl 点击空白：可能是想取消框选误触，不退出
+            if (e.metaKey || e.ctrlKey) return;
+            exitSelectionMode();
         });
 
         // 启动时执行
