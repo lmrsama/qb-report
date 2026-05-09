@@ -258,6 +258,51 @@
         <button class="danger" onclick="exitSelectionMode()" title="退出多选">✕</button>
     </div>
 
+    <!-- 首次访问引导浮层 -->
+    <div id="onboarding" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+        <div style="background:white;border-radius:16px;width:480px;max-width:92vw;max-height:90vh;overflow:auto;padding:28px 28px 24px;box-shadow:0 12px 40px rgba(0,0,0,0.2);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <div style="font-size:18px;font-weight:700;color:#333;">👋 这份方案 + AI 协作能力，3 步上手</div>
+                <button onclick="closeOnboarding()" style="border:none;background:#f0f0f0;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;color:#666;">×</button>
+            </div>
+            <div style="font-size:12px;color:#888;margin-bottom:18px;">PC / 手机都能用，UA 自动识别布局</div>
+
+            <div style="background:#f8f9fc;border-radius:10px;padding:16px;margin-bottom:14px;">
+                <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;">
+                    <div style="background:#667eea;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;">1</div>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:2px;">点元素 / ⌘多选</div>
+                        <div style="font-size:12px;color:#666;line-height:1.6;">鼠标移到任意文案/图片/数据 → 蓝色虚线浮现。<b>单击</b>=针对这一项；<b>按住 ⌘ 跨模块多选</b> → 底部出现工具栏</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;">
+                    <div style="background:#667eea;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;">2</div>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:2px;">💬 评论 — 留意见</div>
+                        <div style="font-size:12px;color:#666;line-height:1.6;">一句话挂在选中的元素上，云端实时同步，我这边随时看到，不用截图描述位置</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    <div style="background:#667eea;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;">3</div>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:2px;">⚡ AI 修改 — 想要就改</div>
+                        <div style="font-size:12px;color:#666;line-height:1.6;">输诉求（"统一改蓝色"/"删黄底框"），3-15 秒生效；改坏了【📜版本历史】一键回滚</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background:#fff8e1;border-left:3px solid #ffa500;padding:10px 12px;border-radius:6px;font-size:12px;color:#7a5500;line-height:1.6;margin-bottom:16px;">
+                💡 想看所有反馈？点右下角 <b>💬</b> 进评论中心总览。<br>
+                💡 AI 修改首次会让输一次密码（向我索取），评论不需要密码。
+            </div>
+
+            <div style="display:flex;gap:8px;">
+                <button onclick="closeOnboarding(true)" style="flex:1;padding:10px;background:#667eea;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">开始体验</button>
+                <button onclick="closeOnboarding(false)" style="padding:10px 14px;background:#f0f0f0;color:#666;border:none;border-radius:8px;font-size:12px;cursor:pointer;">跳过</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 右下角悬浮：评论入口 -->
     <button id="globalCommentFab" onclick="openPanel({kind:'all'})" title="评论中心"
         style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#667eea;color:white;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(102,126,234,0.4);z-index:998;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">💬</button>
@@ -400,8 +445,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 C93Nod0/8/WIsJObv4Ix1ZwS+YrHqgGlKiZ+n55ijG1cDiK/YYWXzSgbIYXW0pn1MuGdHE8XYwXHw8PZWhnR6lcIbTQ/AV4IEYVUaZAAG+c24tBS4FaMxS4ATgZkNSi8p3YxUndLnLKijn1Ki9kFHInV53Bt01ja9g== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'C93Nod0/8/WIsJObv4Ix1ZwS+YrHqgGlKiZ+n55ijG1cDiK/YYWXzSgbIYXW0pn1MuGdHE8XYwXHw8PZWhnR6lcIbTQ/AV4IEYVUaZAAG+c24tBS4FaMxS4ATgZkNSi8p3YxUndLnLKijn1Ki9kFHInV53Bt01ja9g==';
+        // 部署脚本会把 7z+Z2wAAEm9EgbJ9mRDr+SclV58rn5NpNzv0ImyRPZSTpG3Q31/LIp+NV3HRygwJ31/ihY82WQ4jbIlFimgliSp94D6AXElWqCF0Y5VDTGCCP5oPCa9f4ysEaaS+GlSinAePB2fDqL9/+J4ZpQangW3oL5Z6eTtB3w== 替换为实际加密数据
+        const ENCRYPTED_KEYS = '7z+Z2wAAEm9EgbJ9mRDr+SclV58rn5NpNzv0ImyRPZSTpG3Q31/LIp+NV3HRygwJ31/ihY82WQ4jbIlFimgliSp94D6AXElWqCF0Y5VDTGCCP5oPCa9f4ysEaaS+GlSinAePB2fDqL9/+J4ZpQangW3oL5Z6eTtB3w==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1603,6 +1648,24 @@
                 exitSelectionMode();
             }
         });
+
+        // ========= 首次访问引导浮层 =========
+        const ONBOARDING_KEY = 'qb_report_onboarded_v1';
+        function showOnboarding() {
+            document.getElementById('onboarding').style.display = 'flex';
+        }
+        function closeOnboarding(remember) {
+            document.getElementById('onboarding').style.display = 'none';
+            if (remember !== false) {
+                localStorage.setItem(ONBOARDING_KEY, '1');
+            }
+        }
+        // 启动时检查：没看过就弹
+        (function maybeShowOnboarding() {
+            if (!localStorage.getItem(ONBOARDING_KEY)) {
+                setTimeout(showOnboarding, 600);
+            }
+        })();
 
         // 启动时执行
         assignTargetIds();
