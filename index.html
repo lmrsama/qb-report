@@ -116,6 +116,9 @@
             z-index: 6; pointer-events: none; line-height: 1;
         }
         body:not(.show-comments) .target-flag { display: none; }
+        /* 展示评论态：有评论的元素 hover 时实线高亮，提示可点查看 */
+        body.show-comments [data-target-id].has-comments:hover { outline: 2px solid #667eea !important; outline-offset: 2px; cursor: pointer; }
+        body.show-comments .commentable[data-section].has-comments { cursor: pointer; }
 
         /* 多选态：被选元素持续高亮 */
         .selected-target {
@@ -246,7 +249,7 @@
     </div>
     <!-- 顶部右上：只保留评论可见性切换 -->
     <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
-        <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" title="显示评论标记" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;">🙈</button>
+        <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" style="padding:7px 12px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;line-height:1.3;">展示评论</button>
     </div>
 
     <!-- 框选矩形（⌘+拖拽 时显示） -->
@@ -394,8 +397,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 XxeUIJmCJunZ2euTeHg0CgGgk2cV/S9FxtKT6w93F/cds7OdAL9V3zn5vMykGZO9eyW77u5SKENnxktmHM1YgQkmKW3EnuyJ3EfMlRX9xo2zd4KvJyEE3ZToO46Nlf0I35BZKTr9UKFKHG6khK7pHEYEnqeKM8jkaA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'XxeUIJmCJunZ2euTeHg0CgGgk2cV/S9FxtKT6w93F/cds7OdAL9V3zn5vMykGZO9eyW77u5SKENnxktmHM1YgQkmKW3EnuyJ3EfMlRX9xo2zd4KvJyEE3ZToO46Nlf0I35BZKTr9UKFKHG6khK7pHEYEnqeKM8jkaA==';
+        // 部署脚本会把 /qrGFuhxDy02daf9OKbRvALVVzd0BtOuHoAdwuR6XWC+xkZzUdahQ4DNeiLkiyi1Ip63HSQTsEWC30htY38W1JSwZ1EZURcHYG/6ZzkdV7Y57S48TdG+mHBCUjwVdcQ5P5K4dXpxSvHGlPhI/c247ywgEdtQPMoZ9w== 替换为实际加密数据
+        const ENCRYPTED_KEYS = '/qrGFuhxDy02daf9OKbRvALVVzd0BtOuHoAdwuR6XWC+xkZzUdahQ4DNeiLkiyi1Ip63HSQTsEWC30htY38W1JSwZ1EZURcHYG/6ZzkdV7Y57S48TdG+mHBCUjwVdcQ5P5K4dXpxSvHGlPhI/c247ywgEdtQPMoZ9w==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1520,7 +1523,6 @@
 
         function toggleTargetSelection(el) {
             const tid = el.dataset.targetId;
-            console.log('[v2.8.4] toggleTargetSelection', tid, el);
             const idx = selectedTargets.findIndex(t => t.targetId === tid);
             if (idx >= 0) {
                 selectedTargets.splice(idx, 1);
@@ -1535,7 +1537,6 @@
                 });
                 el.classList.add('selected-target');
             }
-            console.log('[v2.8.4] selectedTargets after toggle:', selectedTargets.length);
             // 选中后自动打开/刷新评论面板
             syncSelectionToPanel();
         }
@@ -1579,32 +1580,49 @@
             // 已废弃：每个元素单独绑定。现在统一在 document 级别处理。
         }
 
-        // ========= 统一的 ⌘+click 入口（document 级 capture） =========
-        // 优先级：UI 控件（直接放过） > 子元素（commentable-*） > 模块（commentable[data-section]）
+        // ========= 统一的 click 入口（document 级 capture） =========
+        // 三种情况：
+        // 1. ⌘/Ctrl + click 或 已在多选态：加入选区
+        // 2. 展示评论态 + 单击有评论的子元素：直接打开评论区显示该元素的评论（不进入多选）
+        // 3. 其他单击：放过（纯阅读）
         document.addEventListener('click', (e) => {
-            // 没按 ⌘/Ctrl 也不在选中态：放过（纯阅读）
-            if (!(e.metaKey || e.ctrlKey) && !isInSelectionMode()) return;
+            const showComments = document.body.classList.contains('show-comments');
+            const isCmd = e.metaKey || e.ctrlKey;
+            const inSel = isInSelectionMode();
             // UI 控件不处理
             if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn, .view-switcher, #marqueeBox')) return;
 
-            // 优先匹配子元素
-            let target = e.target.closest('.commentable-text, .commentable-image, .commentable-data');
-            if (!target) {
-                // 兜底：找到所在的模块
-                const moduleEl = e.target.closest('.commentable[data-section]');
-                if (moduleEl) {
-                    if (!moduleEl.dataset.targetId) {
-                        moduleEl.dataset.targetId = 'mod-' + moduleEl.dataset.section;
+            if (isCmd || inSel) {
+                // 多选模式
+                let target = e.target.closest('.commentable-text, .commentable-image, .commentable-data');
+                if (!target) {
+                    const moduleEl = e.target.closest('.commentable[data-section]');
+                    if (moduleEl) {
+                        if (!moduleEl.dataset.targetId) moduleEl.dataset.targetId = 'mod-' + moduleEl.dataset.section;
+                        target = moduleEl;
                     }
-                    target = moduleEl;
+                }
+                if (!target) return;
+                e.preventDefault();
+                e.stopPropagation();
+                toggleTargetSelection(target);
+                return;
+            }
+
+            // 展示评论态 + 单击有评论的元素 → 直接打开该元素的评论区（不进入多选）
+            if (showComments) {
+                const target = e.target.closest('[data-target-id].has-comments, .commentable[data-section].has-comments');
+                if (target) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (target.classList.contains('commentable-text') || target.classList.contains('commentable-image') || target.classList.contains('commentable-data')) {
+                        openPanel({ kind: 'target', el: target });
+                    } else {
+                        // 模块整体
+                        openPanel(target.dataset.section);
+                    }
                 }
             }
-            if (!target) return;
-
-            console.log('[v2.8.4] cmd+click', target.dataset.targetId, 'target=', target);
-            e.preventDefault();
-            e.stopPropagation();
-            toggleTargetSelection(target);
         }, true);
 
         function openMultiSelectPanel(initialTab) {
@@ -1768,8 +1786,10 @@
             localStorage.setItem('show_comments', on ? '1' : '0');
             const btn = document.getElementById('toggleCommentVisBtn');
             if (btn) {
-                btn.textContent = on ? '👁️' : '🙈';
-                btn.title = on ? '隐藏评论标记' : '显示评论标记';
+                btn.textContent = on ? '隐藏评论' : '展示评论';
+                btn.style.background = on ? '#667eea' : 'white';
+                btn.style.color = on ? 'white' : '#666';
+                btn.style.borderColor = on ? '#667eea' : '#e0e0e0';
             }
         }
         // 初始化
@@ -1779,8 +1799,10 @@
             document.body.classList.toggle('show-comments', on);
             const btn = document.getElementById('toggleCommentVisBtn');
             if (btn) {
-                btn.textContent = on ? '👁️' : '🙈';
-                btn.title = on ? '隐藏评论标记' : '显示评论标记';
+                btn.textContent = on ? '隐藏评论' : '展示评论';
+                btn.style.background = on ? '#667eea' : 'white';
+                btn.style.color = on ? 'white' : '#666';
+                btn.style.borderColor = on ? '#667eea' : '#e0e0e0';
             }
         })();
 
