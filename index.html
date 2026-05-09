@@ -170,7 +170,6 @@
         .panel-footer textarea:focus { outline: none; border-color: #667eea; }
         .panel-footer button { margin-top: 6px; width: 100%; padding: 7px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; }
 
-        .hint-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 16px; border-radius: 6px; font-size: 11px; z-index: 999; opacity: 0.85; transition: opacity 0.3s; }
         .export-btn { position: fixed; top: 16px; right: 16px; padding: 8px 16px; background: #333; color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 999; }
         .export-btn:hover { background: #555; }
         .clear-btn { position: fixed; top: 16px; right: 130px; padding: 8px 16px; background: #f0f0f0; color: #666; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 999; }
@@ -469,7 +468,6 @@
 <button class="view-btn active" data-view="pc" onclick="setView('pc')">PC视图</button>
 <button class="view-btn" data-view="mobile" onclick="setView('mobile')">手机视图</button>
 </div>
-<div class="hint-bar" id="hintBar">点击任意模块可留下评论</div>
 <!-- Comment panel -->
 <div class="comment-panel" id="commentPanel">
 <div class="panel-header">
@@ -729,8 +727,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 DduAUUcZQxHH/OtMQ57TJdsXwHGXQcBYYMqiwCdBFVOJ54qst1Krqs7uE4A7p1rfXNEd8LUT1HJpH9huH32OGl9wTI7/HJM2lyRp78BvehsNqNP9tFTM0RWxKWDMQ/fGZ1fr/YPautZn43D+aP/xj/pHPrZrb+7B9w== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'DduAUUcZQxHH/OtMQ57TJdsXwHGXQcBYYMqiwCdBFVOJ54qst1Krqs7uE4A7p1rfXNEd8LUT1HJpH9huH32OGl9wTI7/HJM2lyRp78BvehsNqNP9tFTM0RWxKWDMQ/fGZ1fr/YPautZn43D+aP/xj/pHPrZrb+7B9w==';
+        // 部署脚本会把 ftY2gMzcdXTPoyx2Almqjtd7CymDae6zp/FvVsUb2b6YwfE8imakGtsUZrzRqic+LjC1iV942/xQVINqP7TQPiVblz/N0z9aGg66D2Lx41gNtgVECjvtG3JS2G0MtP+FJuqoY9XwdlnlFlwmGq8v6LYmJYWfN1nGKg== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'ftY2gMzcdXTPoyx2Almqjtd7CymDae6zp/FvVsUb2b6YwfE8imakGtsUZrzRqic+LjC1iV942/xQVINqP7TQPiVblz/N0z9aGg66D2Lx41gNtgVECjvtG3JS2G0MtP+FJuqoY9XwdlnlFlwmGq8v6LYmJYWfN1nGKg==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2518,15 +2516,6 @@
 
         // 输入框不监听回车，避免误触（兼容中英文输入法换行/确认）
         // 用户需点击按钮提交
-
-        setTimeout(() => {
-            const h = document.getElementById('hintBar');
-            if (h) {
-                h.textContent = '鼠标悬浮在模块上 · 点击右上角 💬 即可评论';
-                setTimeout(() => { h.style.opacity = '0'; setTimeout(() => h.style.display = 'none', 300); }, 4000);
-            }
-        }, 100);
-
         // 页面加载时只静默检查（不弹密码框），用户点击模块再触发解锁
         renderBadges();
 
