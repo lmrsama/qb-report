@@ -746,8 +746,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 crCS2awypqsZbBz0tl36oVvtE+kCrMrBq4n9PQeqYit/eV4vwmmxEdmatNVmQtgFoCShB0Ikcs5hDpfeu12Hn9a+x+KGPuNVv7nhEa3XQIkUGnBkBiVw5l2hn2IYMS2PG0lewjgqWqVhmSdzKXJoUCpgsZDJnELmdA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'crCS2awypqsZbBz0tl36oVvtE+kCrMrBq4n9PQeqYit/eV4vwmmxEdmatNVmQtgFoCShB0Ikcs5hDpfeu12Hn9a+x+KGPuNVv7nhEa3XQIkUGnBkBiVw5l2hn2IYMS2PG0lewjgqWqVhmSdzKXJoUCpgsZDJnELmdA==';
+        // 部署脚本会把 sU08420stIfKh8IqrcdmwqutkEYr+s615sGcpbzpgaU9QAewef2mF7iLzMAFkfEcnVg/5WP3M6ygFLBjt4knLcpZSgNgaOo5i4i8UdruJOlgmw9BJVU/zENSRegwSJZiuKZfpCBrhFjVJ8IK4wl8XHGl8Hx6ANPgBw== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'sU08420stIfKh8IqrcdmwqutkEYr+s615sGcpbzpgaU9QAewef2mF7iLzMAFkfEcnVg/5WP3M6ygFLBjt4knLcpZSgNgaOo5i4i8UdruJOlgmw9BJVU/zENSRegwSJZiuKZfpCBrhFjVJ8IK4wl8XHGl8Hx6ANPgBw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2767,7 +2767,7 @@
                     <rect class="p2-export" x="240" y="250" width="100" height="24" rx="4"/>
                     <text x="290" y="266" fill="white" font-size="9" font-weight="600" text-anchor="middle">📤 导出全部评论</text>
                 </g>
-                <text x="180" y="310" font-size="10" fill="#999" text-anchor="middle">评论存云端 · owner 可导出给 WorkBuddy 批量返工</text>
+                <text x="180" y="313" font-size="13" fill="#333" font-weight="600" text-anchor="middle">评论存云端 · owner 可导出给 WorkBuddy 返工</text>
             </svg>`,
 
             "pc-3": `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
@@ -2818,9 +2818,9 @@
                     <!-- 撤回按钮 -->
                     <rect class="p3-revert" x="240" y="145" width="100" height="24" rx="4"/>
                     <text x="290" y="161" fill="white" font-size="9" font-weight="600" text-anchor="middle">↩️ 撤回此操作</text>
-                    <text x="290" y="190" font-size="8" fill="#999" text-anchor="middle">恢复到操作前状态</text>
+                    <text x="290" y="194" font-size="11" fill="#666" font-weight="500" text-anchor="middle">恢复到操作前状态</text>
                 </g>
-                <text x="180" y="310" font-size="10" fill="#999" text-anchor="middle">AI 3-15 秒改页面 · 改坏了版本历史一键撤回</text>
+                <text x="180" y="313" font-size="13" fill="#333" font-weight="600" text-anchor="middle">AI 3-15 秒改页面 · 改坏一键撤回</text>
             </svg>`,
 
             // ===== 手机端动画 =====
@@ -2857,9 +2857,9 @@
                     <circle cx="20" cy="20" r="20" fill="rgba(102,126,234,0.18)"/>
                     <circle cx="20" cy="20" r="12" fill="rgba(102,126,234,0.5)"/>
                 </g>
-                <text x="120" y="240" font-size="11" fill="#999" text-anchor="middle">点【只读】切到【批注】(蓝底)</text>
-                <text x="120" y="260" font-size="10" fill="#bbb" text-anchor="middle">如需评论，先切换为批注模式</text>
-                <text x="120" y="284" font-size="9" fill="#bbb" text-anchor="middle">只读态点元素无反应</text>
+                <text x="120" y="253" font-size="12" fill="#333" font-weight="600" text-anchor="middle">点【只读】→【批注】(蓝底)</text>
+                <text x="120" y="273" font-size="11" fill="#667eea" font-weight="600" text-anchor="middle">如需评论，先切换为批注模式</text>
+                <text x="120" y="294" font-size="10" fill="#999" text-anchor="middle">只读态点元素无反应</text>
             </svg>`,
 
             "mobile-2": `<svg class="help-svg" viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg">
@@ -2901,7 +2901,7 @@
                 <rect x="122" y="248" width="74" height="26" rx="5" fill="#fef3c7"/>
                 <text x="159" y="265" fill="#b45309" font-size="10" font-weight="600" text-anchor="middle">✨ AI 修改</text>
                 <!-- 提示文字（简短） -->
-                <text x="120" y="300" font-size="9" fill="#bbb" text-anchor="middle">存云端 · owner 可【📤 导出全部】返工</text>
+                <text x="120" y="306" font-size="11" fill="#333" font-weight="600" text-anchor="middle">评论存云端 · 可【📤 导出全部】返工</text>
             </svg>`,
 
             "mobile-3": `<svg class="help-svg" viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg">
@@ -2941,16 +2941,16 @@
                     <text x="159" y="265" fill="#b45309" font-size="10" font-weight="600" text-anchor="middle">✨ AI 修改</text>
                 </g>
                 <!-- 提示文字 -->
-                <text x="120" y="300" font-size="9" fill="#bbb" text-anchor="middle">3-15 秒生效 · 版本历史一键撤回</text>
+                <text x="120" y="306" font-size="11" fill="#333" font-weight="600" text-anchor="middle">AI 3-15 秒改页面 · 版本历史一键撤回</text>
             </svg>`
         };
 
         // 步骤数据 + 按设备区分
         const HELP_STEPS = {
             pc: [
-                { num: 1, title: '⌘ 选中元素', desc: '按住 ⌘（Mac）/ Ctrl（Win）单击文案/图片/数据 → 元素出现蓝色实线 + 上方弹出深色小气泡（💬 评论 / ✨ AI 修改）；也可拖动框选多个' },
-                { num: 2, title: '💬 评论 + 导出', desc: '点气泡「💬 评论」→ 弹输入框 → 写反馈点【发送】。评论自动存云端，右下角 💬 查看全部。方案 owner 可【📤 导出全部】为文本，丢给 WorkBuddy 批量返工' },
-                { num: 3, title: '✨ AI 修改 + 撤回', desc: '点气泡「✨ AI 修改」→ 弹输入框 → 描述改动点【发送】→ 3-15 秒页面直接变。改坏了？右下角 💬 →「AI 修改」tab →【📜 版本历史】→ 点「↩️ 撤回此操作」恢复' }
+                { num: 1, title: '⌘ 选中元素', desc: '⌘/Ctrl + 单击元素选中；或空白处拖动框选多个' },
+                { num: 2, title: '💬 评论 + 导出', desc: '点气泡「💬 评论」写反馈；可【📤 导出全部】' },
+                { num: 3, title: '✨ AI 修改 + 撤回', desc: '点气泡「✨ AI 修改」描述改动 → 3-15 秒生效；版本历史可撤回' }
             ],
             mobile: [
                 { num: 1, title: '切批注 + 点元素', desc: '右上角【只读】→【批注】；点元素弹底部卡片' },
