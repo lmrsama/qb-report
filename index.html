@@ -745,8 +745,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 gRQ/zZ9Wt7xn9OtvW7g86gcs0GdarztvA1d0rgKapsxIcSJf1y6S3saG8L+0dQFp6Fn/3B0G3mOlc+XliSt37R8L8BN1dc+xKKWFqAzGMSqKkAKaaObSBwJfVBlGICo/pXXGuCY1nbswXyVZ4aYKJGl1hxpM/L7kTw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'gRQ/zZ9Wt7xn9OtvW7g86gcs0GdarztvA1d0rgKapsxIcSJf1y6S3saG8L+0dQFp6Fn/3B0G3mOlc+XliSt37R8L8BN1dc+xKKWFqAzGMSqKkAKaaObSBwJfVBlGICo/pXXGuCY1nbswXyVZ4aYKJGl1hxpM/L7kTw==';
+        // 部署脚本会把 l5EVYlGPZkoQijgsqW5kpBs95k9IkjtEzEY6ud0Xrhe2EH1Ik7CzJtrZ2bOeMgLmv6mlbYLs5YtiHPHLEX6y+RVCew+ktk1jZY9iJAZV5efi4nIXWGmKc34z5IpUK1Z1hf2HhnmKWfZF/Nx7aQvHSMElS46RWUy4vw== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'l5EVYlGPZkoQijgsqW5kpBs95k9IkjtEzEY6ud0Xrhe2EH1Ik7CzJtrZ2bOeMgLmv6mlbYLs5YtiHPHLEX6y+RVCew+ktk1jZY9iJAZV5efi4nIXWGmKc34z5IpUK1Z1hf2HhnmKWfZF/Nx7aQvHSMElS46RWUy4vw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1972,7 +1972,10 @@
 
         // 多元素批量 AI 修改：返回 [{target_id, action, ...}, ...]
         async function callAIToModifyMulti(userPrompt, items) {
-            // 限制最多 6 个，防止 prompt 过长
+            // v2.11.20：超过 6 个时 toast 提示，只处理前 6 个
+            if (items.length > 6) {
+                showTopToast(`Demo 版 AI 修改上限 6 个元素，已选 ${items.length} 个，将只处理前 6 个。进阶诉求请用「💬 评论」留言`, 6000);
+            }
             const lim = items.slice(0, 6);
             const blocks = lim.map((t, idx) => {
                 const el = document.querySelector(`[data-target-id="${t.targetId}"]`);
