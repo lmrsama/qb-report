@@ -128,23 +128,6 @@
             outline: 2px dashed #667eea; outline-offset: 2px;
         }
 
-        /* 多选浮动工具栏：跟随选中元素，类似划词菜单 */
-        #multiSelectBar {
-            position: absolute;
-            background: white; border: 1px solid #e0e0e0; border-radius: 999px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-            padding: 6px 6px 6px 14px; z-index: 1100;
-            display: none; gap: 6px; align-items: center;
-            font-size: 12px;
-            white-space: nowrap;
-        }
-        #multiSelectBar.show { display: flex; }
-        #multiSelectBar .ms-count { color: #333; font-weight: 600; padding-right: 6px; border-right: 1px solid #eee; margin-right: 2px; font-size: 11px; }
-        #multiSelectBar button { border: none; background: #f5f5f7; color: #333; padding: 5px 10px; border-radius: 999px; font-size: 11px; cursor: pointer; }
-        #multiSelectBar button.primary { background: #667eea; color: white; }
-        #multiSelectBar button.danger { background: transparent; color: #999; padding: 5px 6px; }
-        #multiSelectBar button:hover { filter: brightness(0.95); }
-
         /* 框选矩形（按 ⌘+拖拽 触发） */
         #marqueeBox {
             position: absolute;
@@ -264,14 +247,6 @@
     <!-- 顶部右上：只保留评论可见性切换 -->
     <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
         <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" title="显示评论标记" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;">🙈</button>
-    </div>
-
-    <!-- 多选浮动工具栏 -->
-    <div id="multiSelectBar">
-        <span class="ms-count">已选 <span id="msCount">0</span> 项</span>
-        <button class="primary" onclick="openMultiSelectPanel('comment')">💬 评论</button>
-        <button class="primary" onclick="openMultiSelectPanel('ai')">⚡ AI 修改</button>
-        <button class="danger" onclick="exitSelectionMode()" title="退出多选">✕</button>
     </div>
 
     <!-- 框选矩形（⌘+拖拽 时显示） -->
@@ -419,8 +394,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 MPDlEEwhcpbNGPxcuWGwMYHGxsodTnYBmhkkapeleY83gjzPc/yOsl/zH7otA3fqYhdMJmaPuayiQaLHCS2kAGhX0VAgtCXtVfBoD3mex9HA1R3IUeuimRrqhRVCO9MIiEMd1X+fqK+gGfq67w20KwVXPrcNyC+Ekw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'MPDlEEwhcpbNGPxcuWGwMYHGxsodTnYBmhkkapeleY83gjzPc/yOsl/zH7otA3fqYhdMJmaPuayiQaLHCS2kAGhX0VAgtCXtVfBoD3mex9HA1R3IUeuimRrqhRVCO9MIiEMd1X+fqK+gGfq67w20KwVXPrcNyC+Ekw==';
+        // 部署脚本会把 hr3W3jM9teyylbgxVIinoHUkUGewjk27Ate4od9IRq8g5G+2SfE3tU1Zz3ljfy2ovLxBYIlqP/iRwBhkOvHmTcgAetSAa5zLlUCLWDwJAybu3NUGThryajftDkqRqYAhsDPoiutP7EOidMWphPbBr5+71vMKuGEYiQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'hr3W3jM9teyylbgxVIinoHUkUGewjk27Ate4od9IRq8g5G+2SfE3tU1Zz3ljfy2ovLxBYIlqP/iRwBhkOvHmTcgAetSAa5zLlUCLWDwJAybu3NUGThryajftDkqRqYAhsDPoiutP7EOidMWphPbBr5+71vMKuGEYiQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -798,6 +773,10 @@
             currentTarget = null;
             currentMultiItems = null;
             currentScope = { kind: 'all' };
+            // 关闭面板的同时清掉选区高亮（避免页面留着蓝色选中态但面板已关）
+            document.querySelectorAll('.selected-target').forEach(el => el.classList.remove('selected-target'));
+            selectedTargets = [];
+            document.body.classList.remove('selection-mode');
         }
 
         async function renderComments() {
@@ -1551,89 +1530,63 @@
                 });
                 el.classList.add('selected-target');
             }
-            // 工具栏锚定到最后一次操作的元素
-            updateMultiSelectBar(el);
+            // 选中后自动打开/刷新评论面板（multi 单元素都走 multi scope，统一交互）
+            syncSelectionToPanel();
         }
 
-        function updateMultiSelectBar(anchorEl) {
-            const bar = document.getElementById('multiSelectBar');
-            const count = document.getElementById('msCount');
-            if (selectedTargets.length > 0) {
-                bar.classList.add('show');
-                if (count) count.textContent = selectedTargets.length;
-                document.body.classList.add('selection-mode');
-                // 计算锚点位置（在锚定元素正上方居中，留 8px 间距）
-                if (anchorEl) {
-                    positionMultiSelectBar(anchorEl);
-                }
-            } else {
-                bar.classList.remove('show');
+        // selectedTargets 变化时，自动同步到评论面板：
+        // - 选区为空 → 关闭面板，退出多选态
+        // - 选区非空 → 打开面板，scope=multi（即使只选了 1 个，也用 multi 让交互一致）
+        function syncSelectionToPanel() {
+            if (selectedTargets.length === 0) {
                 document.body.classList.remove('selection-mode');
+                // 如果当前面板正是多选 scope，关闭它
+                if (currentScope && currentScope.kind === 'multi') {
+                    document.getElementById('commentPanel').classList.remove('open');
+                    currentScope = { kind: 'all' };
+                    currentMultiItems = null;
+                }
+                return;
             }
+            document.body.classList.add('selection-mode');
+            // 打开/刷新面板（保留当前 Tab，没打开的话默认评论 Tab）
+            const wasOpen = document.getElementById('commentPanel').classList.contains('open');
+            const keepTab = wasOpen ? currentTab : 'comment';
+            openPanel({ kind: 'multi', items: selectedTargets.slice() }, keepTab);
         }
 
-        function positionMultiSelectBar(anchorEl) {
-            const bar = document.getElementById('multiSelectBar');
-            if (!bar) return;
-            const rect = anchorEl.getBoundingClientRect();
-            // 先显示出来才能算 bar 自己的尺寸
-            bar.style.visibility = 'hidden';
-            bar.classList.add('show');
-            const barW = bar.offsetWidth;
-            const barH = bar.offsetHeight;
-            // 默认放在元素正上方
-            let top = rect.top + window.scrollY - barH - 10;
-            let left = rect.left + window.scrollX + rect.width / 2 - barW / 2;
-            // 上方放不下：放到下方
-            if (top < window.scrollY + 8) {
-                top = rect.bottom + window.scrollY + 10;
-            }
-            // 横向越界处理
-            const maxLeft = window.scrollX + document.documentElement.clientWidth - barW - 8;
-            if (left < window.scrollX + 8) left = window.scrollX + 8;
-            if (left > maxLeft) left = maxLeft;
-            bar.style.top = top + 'px';
-            bar.style.left = left + 'px';
-            bar.style.visibility = 'visible';
+        // 兼容旧接口：updateMultiSelectBar / openMultiSelectPanel 仍可被调用，但不再做事
+        function updateMultiSelectBar() { /* deprecated: 工具栏已废弃 */ }
+        function openMultiSelectPanel(initialTab) {
+            if (selectedTargets.length === 0) return;
+            openPanel({ kind: 'multi', items: selectedTargets.slice() }, initialTab);
         }
-
-        // 滚动/窗口尺寸变化时，工具栏跟随最后一次锚点重新定位
-        window.addEventListener('scroll', () => {
-            if (!isInSelectionMode()) return;
-            const last = selectedTargets[selectedTargets.length - 1];
-            if (!last) return;
-            const el = document.querySelector(`[data-target-id="${last.targetId}"]`);
-            if (el) positionMultiSelectBar(el);
-        }, { passive: true });
-        window.addEventListener('resize', () => {
-            if (!isInSelectionMode()) return;
-            const last = selectedTargets[selectedTargets.length - 1];
-            if (!last) return;
-            const el = document.querySelector(`[data-target-id="${last.targetId}"]`);
-            if (el) positionMultiSelectBar(el);
-        });
 
         function exitSelectionMode() {
             document.querySelectorAll('.selected-target').forEach(el => el.classList.remove('selected-target'));
             selectedTargets = [];
-            updateMultiSelectBar();
+            syncSelectionToPanel();
         }
 
-        // 子元素点击：⌘/Ctrl 加入选区，单击直接打开该元素的评论面板
+        // 子元素点击：⌘/Ctrl 加入选区。用 capture 阶段抢在 inline onclick 之前
         function bindTargetClicks() {
             document.querySelectorAll('.commentable-text, .commentable-image, .commentable-data').forEach(el => {
                 if (el.dataset.targetBound) return;
                 el.dataset.targetBound = '1';
                 el.addEventListener('click', (e) => {
-                    // 只有 ⌘/Ctrl + 单击 或 已在多选态时 才进入选区
-                    // 其他情况单击 = 不做任何事，纯阅读
                     if (e.metaKey || e.ctrlKey || isInSelectionMode()) {
                         e.preventDefault();
                         e.stopPropagation();
                         toggleTargetSelection(el);
                     }
-                    // else: 默认浏览器行为（让 click 自然流过，允许选段/拖拽等）
-                });
+                }, true); // capture 阶段，抢在子元素的 inline onclick 之前
+                // 同样在 mousedown 阶段也拦一下（避免 inline onclick 在 mouseup 时触发）
+                el.addEventListener('mousedown', (e) => {
+                    if (e.metaKey || e.ctrlKey || isInSelectionMode()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }, true);
             });
         }
 
@@ -1731,16 +1684,17 @@
                     }
                 }
             });
-            updateMultiSelectBar(lastEl);
+            // 框选完成后同步到面板
+            syncSelectionToPanel();
         });
 
         // ========= 点空白处退出多选 =========
         document.addEventListener('click', (e) => {
             if (!isInSelectionMode()) return;
-            // 点工具栏 / 评论面板 / FAB / 版本modal / commentable 元素 都不算空白
-            if (e.target.closest('#multiSelectBar, #commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn')) return;
+            // 点 评论面板 / FAB / 版本modal / 顶部按钮 / commentable 元素 都不算空白
+            if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn')) return;
             if (e.target.closest('.commentable-text, .commentable-image, .commentable-data')) return;
-            // ⌘/Ctrl 点击空白：可能是想取消框选误触，不退出
+            // ⌘/Ctrl 点击空白：可能是想框选误触，不退出
             if (e.metaKey || e.ctrlKey) return;
             exitSelectionMode();
         });
