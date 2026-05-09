@@ -574,7 +574,7 @@
 </div>
 <textarea id="bubbleInputText" placeholder="输入内容..."></textarea>
 <div class="bi-foot">
-<span class="bi-tip" id="biTipText">回车发送 · Shift+回车换行</span>
+<span class="bi-tip" id="biTipText">点【发送】按钮提交</span>
 <span class="bi-actions">
 <button class="bi-cancel" data-bi-action="cancel">取消</button>
 <button class="bi-send" data-bi-action="send" id="biSendBtn">发送</button>
@@ -729,8 +729,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 jXMgsqMApTPjd2aVNpxHDtGwgHHDviA/PBcoCWHfVCJ0GC/ey2FI6Ifxu86gh9H7xa/dN1TW11U4ZkokDvzXlMwV9DDTqq6sidZNgkFdLP57vK2UaAS7WXe/ttKjuCiquStJlaqtP3EYOZEwZEd01+P2nWcGcqfi1w== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'jXMgsqMApTPjd2aVNpxHDtGwgHHDviA/PBcoCWHfVCJ0GC/ey2FI6Ifxu86gh9H7xa/dN1TW11U4ZkokDvzXlMwV9DDTqq6sidZNgkFdLP57vK2UaAS7WXe/ttKjuCiquStJlaqtP3EYOZEwZEd01+P2nWcGcqfi1w==';
+        // 部署脚本会把 aE8VFZGodL5PPpsN/hwWuV5fx2TO5iVgXVpsXKIm2VIB1TSYuQyk+rhuMqC5vTx9WZwGNPtVvN06AW+OOsFxpWhNyr8eCfcQi4rYAIpASJi/rHElMjAgBMXpXZE9m2t85oHRsShnK6WG7qgtFpOWgLnNyvd6wJRuRA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'aE8VFZGodL5PPpsN/hwWuV5fx2TO5iVgXVpsXKIm2VIB1TSYuQyk+rhuMqC5vTx9WZwGNPtVvN06AW+OOsFxpWhNyr8eCfcQi4rYAIpASJi/rHElMjAgBMXpXZE9m2t85oHRsShnK6WG7qgtFpOWgLnNyvd6wJRuRA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1356,7 +1356,7 @@
                 ta.placeholder = selectedTargets.length > 1
                     ? `批量改 ${selectedTargets.length} 项，例如："统一改成蓝色"`
                     : '描述要怎么改，例如：把这里数字改成5w';
-                tipText.textContent = '回车发送 · Shift+回车换行 · 实时改 HTML';
+                tipText.textContent = '点【发送】按钮提交 · 实时改 HTML';
                 sendBtn.textContent = '⚡ 发送';
                 sendBtn.style.background = '#f59e0b';
             } else {
@@ -1366,7 +1366,7 @@
                 ta.placeholder = selectedTargets.length > 1
                     ? `针对选中的 ${selectedTargets.length} 项写评论`
                     : '针对该元素的评论';
-                tipText.textContent = '回车发送 · Shift+回车换行';
+                tipText.textContent = '点【发送】按钮提交';
                 sendBtn.textContent = '发送';
                 sendBtn.style.background = '#667eea';
             }
@@ -1474,17 +1474,20 @@
             }
         }
 
-        // 输入框：回车发送，Shift+回车换行
-        document.addEventListener('DOMContentLoaded', () => {
-            const ta = document.getElementById('bubbleInputText');
-            if (ta) {
-                ta.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        bubbleSubmit();
-                    }
-                });
+        // v2.11.11：所有输入框完全屏蔽 Enter（既不发送也不换行），发送只能点按钮
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            const t = e.target;
+            if (!t) return;
+            const tag = (t.tagName || '').toLowerCase();
+            if (tag === 'textarea' || tag === 'input') {
+                e.preventDefault();
+                e.stopPropagation();
             }
+        }, true);
+
+        // 输入框：发送只能点按钮（Enter 已被全局屏蔽）
+        document.addEventListener('DOMContentLoaded', () => {
             // 工具栏按钮：用 capture 监听 + stopPropagation，确保不被 document click handler 截胡
             const tb = document.getElementById('bubbleToolbar');
             if (tb) {
