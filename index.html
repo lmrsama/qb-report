@@ -738,8 +738,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 VVkInAsBpF4RbdyKipKbYzOJODQpf0ayahonCP5Fd0QRcNGxAlhpXXX8ccajuwzt4ZkiBFdiRvFWAPElRvcHa+k/bGxk0zCt87Z3piGSGOjN9TCnGZJOyP5+qcJ+K1hZbD7ITPC5bSHW1HO5L69WCy647zYdBtf/3A== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'VVkInAsBpF4RbdyKipKbYzOJODQpf0ayahonCP5Fd0QRcNGxAlhpXXX8ccajuwzt4ZkiBFdiRvFWAPElRvcHa+k/bGxk0zCt87Z3piGSGOjN9TCnGZJOyP5+qcJ+K1hZbD7ITPC5bSHW1HO5L69WCy647zYdBtf/3A==';
+        // 部署脚本会把 jRrKtG1XZdi7QjAAlH7lKCkDVFtQ+FweUdu/NDagyC0SFZFXx+GZ2t4Sh745Y/czLtDPZe0EjgjMjpbKbrriK2ZS1YfGLPHzI5/ZwmFXqWNQiBizQ25fPtmFfTYMeIjFYVZ5hY2ofKsI8BYscXjRCUTTreK4gSWDuQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'jRrKtG1XZdi7QjAAlH7lKCkDVFtQ+FweUdu/NDagyC0SFZFXx+GZ2t4Sh745Y/czLtDPZe0EjgjMjpbKbrriK2ZS1YfGLPHzI5/ZwmFXqWNQiBizQ25fPtmFfTYMeIjFYVZ5hY2ofKsI8BYscXjRCUTTreK4gSWDuQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1457,6 +1457,27 @@
             if (t) t.classList.remove('show');
             // 用全部 scope 打开面板，切到 AI tab
             openPanel({ kind: 'all' }, 'ai');
+        }
+
+        // 手机端只读态点元素时的提示（首次或节流后再次提示）
+        const ANNOTATE_HINT_KEY = 'qb_annotate_hint_shown';
+        let _lastAnnotateHintAt = 0;
+        function maybeShowAnnotateHint() {
+            const now = Date.now();
+            const shown = localStorage.getItem(ANNOTATE_HINT_KEY);
+            // 已提示过 + 30 秒内再次点 → 不重复弹
+            if (shown && now - _lastAnnotateHintAt < 30000) return;
+            _lastAnnotateHintAt = now;
+            localStorage.setItem(ANNOTATE_HINT_KEY, '1');
+            showTopToast('需要评论？请 <a onclick="enableAnnotateFromToast()">【切换】</a> 至批注模式', 8000);
+        }
+        function enableAnnotateFromToast() {
+            const t = document.getElementById('topToast');
+            if (t) t.classList.remove('show');
+            // 如果当前是只读态，切换为批注态
+            if (!document.body.classList.contains('show-comments')) {
+                toggleCommentVisibility();
+            }
         }
 
         // 输入框：回车发送，Shift+回车换行
@@ -2290,10 +2311,18 @@
                 return t;
             };
 
-            // ====== 手机：展示评论态下，单击元素 → 直接弹评论卡片（不走选区）======
+            // ====== 手机：批注态下，单击元素 → 直接弹评论卡片（不走选区）======
             if (mobile) {
-                if (!showComments) return;
                 const target = findTarget();
+                if (!showComments) {
+                    // 只读态下点元素 → 首次提示切换批注模式
+                    if (target) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        maybeShowAnnotateHint();
+                    }
+                    return;
+                }
                 if (target) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -2743,8 +2772,8 @@
                 { num: 3, title: '只读 / 批注切换', desc: '右上角【批注】按钮切换：批注态可写评论 + 单击有评论元素查看历史；只读态纯阅读，仅适合给观众演示' }
             ],
             mobile: [
-                { num: 1, title: '开启批注模式', desc: '右上角【批注】按钮切到批注态（蓝底=批注中），即可单击元素留评论' },
-                { num: 2, title: '点元素弹卡片', desc: '单击文案/图片/数据 → 底部弹出评论卡片（半屏），上方显示该元素现有评论，下方输入框继续追加' },
+                { num: 1, title: '⚠️ 先开启批注模式', desc: '默认是「只读」态，点元素无反应。必须点右上角【只读】按钮切到「批注」态（蓝底=批注中），才能开始写评论或 AI 修改' },
+                { num: 2, title: '点元素弹卡片', desc: '批注态下单击文案/图片/数据 → 底部弹出评论卡片（半屏），上方显示该元素现有评论，下方输入框继续追加' },
                 { num: 3, title: '💬 评论 / ✨ AI 修改', desc: '输入诉求后点【💬 发表评论】记录建议，或点【✨ AI 修改】3-15 秒实时改 HTML；改坏可在 list 里看到，PC 端【📜 版本历史】回滚' }
             ]
         };
