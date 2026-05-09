@@ -533,7 +533,7 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                     <div>
                         <div style="font-size:16px;font-weight:700;color:#333;">📖 新手引导</div>
-                        <div style="font-size:11px;color:#999;margin-top:3px;">3 步即可上手 · 点右侧描述切换演示</div>
+                        <div style="font-size:11px;color:#999;margin-top:3px;">先看「关于」了解工具 · 再看设备操作指南</div>
                     </div>
                     <button onclick="closeHelp()" style="border:none;background:#f0f0f0;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;color:#666;">×</button>
                 </div>
@@ -746,8 +746,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 VQ5XPnSTGie5sMDJuxIjT9WMk4HcU0KQyNq7dqCTKT8sndmaopRmq2qh9g5yozfxIYeW6Eo7jZrfy9T/i41aObzSnq5Gb7F1GdX5DpIW15jkdNM3BddJPnNZ5jwo8EV+tVF8Y+iZQeokx+cwAaB3N1H8Oe3/tDM0gw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'VQ5XPnSTGie5sMDJuxIjT9WMk4HcU0KQyNq7dqCTKT8sndmaopRmq2qh9g5yozfxIYeW6Eo7jZrfy9T/i41aObzSnq5Gb7F1GdX5DpIW15jkdNM3BddJPnNZ5jwo8EV+tVF8Y+iZQeokx+cwAaB3N1H8Oe3/tDM0gw==';
+        // 部署脚本会把 duFlw14ukZPIc0BG5yg6Mv0oOxrluboK3aT/gTxizLMopiQ9reweSYu+RMKVD/mGOY7X6Q78WrSoAtZFOeaegaTFl310mxNhTrY9t+Ez3PxyHAu4OBX60RZVzeQbowYiMaajWGfpGKHqGfC6hZ5HPbn0qyfE6AFnig== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'duFlw14ukZPIc0BG5yg6Mv0oOxrluboK3aT/gTxizLMopiQ9reweSYu+RMKVD/mGOY7X6Q78WrSoAtZFOeaegaTFl310mxNhTrY9t+Ez3PxyHAu4OBX60RZVzeQbowYiMaajWGfpGKHqGfC6hZ5HPbn0qyfE6AFnig==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -3038,15 +3038,17 @@
                     </div>
                 `;
             } else {
-                // PC / 手机端：恢复左右拆分（手机视图强制上下布局）
+                // PC / 手机端：恢复左右拆分（手机视图 或 窄屏 都强制上下布局）
                 animArea.style.display = 'flex';
                 const bodyEl = stepsArea.parentElement;
-                if (isMobileView()) {
-                    // 手机视图：上动画（40%）+ 下步骤（60%），纵向
+                const useMobileLayout = isMobileView() || window.innerWidth < 760;
+                if (useMobileLayout) {
+                    // 手机：上动画 + 下步骤，纵向
                     bodyEl.style.flexDirection = 'column';
                     animArea.style.width = '100%';
                     animArea.style.minHeight = '180px';
-                    animArea.style.maxHeight = '38vh';
+                    animArea.style.maxHeight = '34vh';
+                    animArea.style.padding = '12px';
                     animArea.style.borderRight = 'none';
                     animArea.style.borderBottom = '1px solid #f0f0f0';
                     stepsArea.style.width = '100%';
@@ -3056,6 +3058,7 @@
                     animArea.style.width = '55%';
                     animArea.style.minHeight = '340px';
                     animArea.style.maxHeight = '';
+                    animArea.style.padding = '20px';
                     animArea.style.borderRight = '1px solid #f0f0f0';
                     animArea.style.borderBottom = 'none';
                     stepsArea.style.width = '45%';
