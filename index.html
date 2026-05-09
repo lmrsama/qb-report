@@ -394,8 +394,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 uLMFdNcz3u7klPjdNN1c3TLIn9OBaWNA5j+Q4NWa/ln6qkdn5jC2DhongVGGVYX0mV95ATQ9O7JtIbgPs+yviFUogp/u0sMXS+WCPFnOVgouidfzQ32NHxhZBjBOpbOvTg2N+v73nreE/O5s/0UIjXNlR3ZwWAOVOQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'uLMFdNcz3u7klPjdNN1c3TLIn9OBaWNA5j+Q4NWa/ln6qkdn5jC2DhongVGGVYX0mV95ATQ9O7JtIbgPs+yviFUogp/u0sMXS+WCPFnOVgouidfzQ32NHxhZBjBOpbOvTg2N+v73nreE/O5s/0UIjXNlR3ZwWAOVOQ==';
+        // 部署脚本会把 fhasoxi8Kw4feN5Db3Ay9IYlay+9KyAz51gKwn7J3XbGW1sMh/JVZO0grddeis9CAY/twtK6a6ebrrJ6b1jPh2zWQPVZiFVjA2015YAe745uHqcH3g/U0byktBd/rrXJSHnYDIkapEHVoJUnEc2DCm84D6aoKozi1w== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'fhasoxi8Kw4feN5Db3Ay9IYlay+9KyAz51gKwn7J3XbGW1sMh/JVZO0grddeis9CAY/twtK6a6ebrrJ6b1jPh2zWQPVZiFVjA2015YAe745uHqcH3g/U0byktBd/rrXJSHnYDIkapEHVoJUnEc2DCm84D6aoKozi1w==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1497,6 +1497,10 @@
         // 生成元素的简短描述（评论列表里展示用）
         function getTargetLabel(el) {
             if (!el) return '元素';
+            // 模块整体（点空白处兜底选中的）
+            if (el.classList.contains('commentable') && el.dataset.section && !el.classList.contains('commentable-text') && !el.classList.contains('commentable-image') && !el.classList.contains('commentable-data')) {
+                return '📦 ' + (sectionNames[el.dataset.section] || el.dataset.section);
+            }
             if (el.classList.contains('commentable-image')) return '🖼️ 图片';
             const txt = (el.textContent || '').trim().replace(/\s+/g, ' ');
             const short = txt.length > 14 ? txt.slice(0, 14) + '…' : txt;
@@ -1574,7 +1578,6 @@
                 if (el.dataset.targetBound) return;
                 el.dataset.targetBound = '1';
                 el.addEventListener('click', (e) => {
-                    console.log('[target click]', el.dataset.targetId, 'meta=', e.metaKey, 'ctrl=', e.ctrlKey, 'inSel=', isInSelectionMode());
                     if (e.metaKey || e.ctrlKey || isInSelectionMode()) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -1589,6 +1592,26 @@
                 }, true);
             });
         }
+
+        // ========= 全局兜底：⌘+点击任何地方都能命中 =========
+        // 在 document 级别 capture 阶段处理：如果点中的不是子元素但在 commentable 模块内，把模块当作 target 选中
+        document.addEventListener('click', (e) => {
+            if (!(e.metaKey || e.ctrlKey)) return;
+            // 已经被 bindTargetClicks 处理过？(子元素 capture 阶段会先触发并 stopPropagation，到这里就不会到了)
+            if (e.target.closest('.commentable-text, .commentable-image, .commentable-data')) return;
+            // UI 控件不处理
+            if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn, .view-switcher')) return;
+            // 找最近的 commentable 模块
+            const moduleEl = e.target.closest('.commentable[data-section]');
+            if (!moduleEl) return;
+            // 给模块也分配一个临时 target-id（如果没分配的话）：mod-<section>
+            if (!moduleEl.dataset.targetId) {
+                moduleEl.dataset.targetId = 'mod-' + moduleEl.dataset.section;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            toggleTargetSelection(moduleEl);
+        }, true);
 
         function openMultiSelectPanel(initialTab) {
             if (selectedTargets.length === 0) return;
