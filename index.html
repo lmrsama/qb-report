@@ -204,6 +204,58 @@
         body.mobile-view .view-switcher { top: 10px; left: 50%; transform: translateX(-50%); }
         body.mobile-view .export-btn { top: 56px; right: 10px; padding: 5px 10px; font-size: 10px; }
         body.mobile-view .clear-btn { top: 56px; right: 90px; padding: 5px 10px; font-size: 10px; }
+
+        /* ===== 手机视图：评论面板改成底部抽屉 ===== */
+        body.mobile-view .comment-panel {
+            top: auto !important;
+            bottom: 0;
+            left: 0; right: 0;
+            width: 100% !important;
+            height: 50vh; /* 默认占半屏 */
+            max-height: 92vh;
+            transform: translateY(100%);
+            transition: transform 0.25s, height 0.25s;
+            border-radius: 14px 14px 0 0;
+            box-shadow: 0 -6px 20px rgba(0,0,0,0.15);
+            resize: vertical; /* 用户能上拉 */
+        }
+        body.mobile-view .comment-panel.open { transform: translateY(0); }
+        body.mobile-view .comment-panel.expanded { height: 92vh; }
+        /* 抽屉顶部的拖拽把手 */
+        body.mobile-view .comment-panel::before {
+            content: '';
+            position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+            width: 36px; height: 4px; border-radius: 2px;
+            background: #ddd;
+            cursor: grab;
+        }
+        body.mobile-view .panel-header { padding-top: 18px; }
+        /* 主页面给底部留空间，避免内容被抽屉遮住 */
+        body.mobile-view.panel-open .container { padding-bottom: 52vh; }
+        body.mobile-view.panel-open.panel-expanded .container { padding-bottom: 92vh; }
+
+        /* ===== 手机视图：选中态的圆形标记 ===== */
+        body.mobile-view .selected-target {
+            outline: 2px solid #667eea !important;
+            outline-offset: 2px;
+            background: rgba(102,126,234,0.06) !important;
+        }
+        body.mobile-view .selected-target::before {
+            content: '✓';
+            position: absolute;
+            top: -8px; left: -8px;
+            width: 18px; height: 18px;
+            background: #667eea; color: white;
+            font-size: 11px; font-weight: 700;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 12;
+            box-shadow: 0 2px 6px rgba(102,126,234,0.4);
+        }
+        /* 手机视图下，评论可见态再点元素，提示可点 */
+        body.mobile-view.show-comments .commentable-text:active,
+        body.mobile-view.show-comments .commentable-image:active,
+        body.mobile-view.show-comments .commentable-data:active { outline: 2px solid #667eea; outline-offset: 2px; }
     </style>
 </head>
 <body>
@@ -271,48 +323,29 @@
     <div id="helpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(3px);">
         <div style="background:white;border-radius:14px;width:760px;max-width:94vw;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.25);">
             <!-- header -->
-            <div style="padding:18px 22px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                    <div style="font-size:16px;font-weight:700;color:#333;">📖 新手引导 · 这个汇报版怎么用</div>
-                    <div style="font-size:11px;color:#999;margin-top:3px;">3 步即可上手 · 点右侧描述切换演示</div>
+            <div style="padding:18px 22px 0;border-bottom:1px solid #f0f0f0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:16px;font-weight:700;color:#333;">📖 新手引导 · 这个汇报版怎么用</div>
+                        <div style="font-size:11px;color:#999;margin-top:3px;">3 步即可上手 · 点右侧描述切换演示</div>
+                    </div>
+                    <button onclick="closeHelp()" style="border:none;background:#f0f0f0;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;color:#666;">×</button>
                 </div>
-                <button onclick="closeHelp()" style="border:none;background:#f0f0f0;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;color:#666;">×</button>
+                <!-- 设备 Tab -->
+                <div style="display:flex;gap:6px;">
+                    <button class="device-tab active" data-device="pc" onclick="switchHelpDevice('pc')" style="padding:6px 14px;border:none;background:#f0f4ff;color:#667eea;font-weight:600;border-radius:6px 6px 0 0;font-size:12px;cursor:pointer;border-bottom:2px solid #667eea;">💻 PC 端</button>
+                    <button class="device-tab" data-device="mobile" onclick="switchHelpDevice('mobile')" style="padding:6px 14px;border:none;background:transparent;color:#999;border-radius:6px 6px 0 0;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;">📱 手机端</button>
+                </div>
             </div>
-            <!-- body：左视频区 + 右描述列表 -->
+            <!-- body：左动画区 + 右描述列表 -->
             <div style="flex:1;display:flex;min-height:0;">
                 <!-- 左：动画演示 -->
                 <div id="helpAnim" style="width:55%;background:#f7f8fc;display:flex;align-items:center;justify-content:center;padding:20px;border-right:1px solid #f0f0f0;min-height:340px;">
                     <!-- SVG 动画注入位置 -->
                 </div>
                 <!-- 右：步骤列表 -->
-                <div style="width:45%;padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
-                    <div class="help-step active" data-step="1" onclick="switchHelpStep(1)" style="padding:12px 14px;border:1.5px solid #667eea;background:#f0f4ff;border-radius:10px;cursor:pointer;transition:all 0.15s;">
-                        <div style="font-size:13px;font-weight:600;color:#333;display:flex;align-items:center;gap:6px;">
-                            <span style="background:#667eea;color:white;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">1</span>
-                            ⌘ 选中元素
-                        </div>
-                        <div style="font-size:12px;color:#666;line-height:1.6;margin-top:6px;">
-                            按住 ⌘（Mac）/ Ctrl（Win）单击模块中的文案、图片、数据；也可拖动框选多个；松开后右侧自动弹出评论区
-                        </div>
-                    </div>
-                    <div class="help-step" data-step="2" onclick="switchHelpStep(2)" style="padding:12px 14px;border:1.5px solid #f0f0f0;background:white;border-radius:10px;cursor:pointer;transition:all 0.15s;">
-                        <div style="font-size:13px;font-weight:600;color:#333;display:flex;align-items:center;gap:6px;">
-                            <span style="background:#999;color:white;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">2</span>
-                            写评论
-                        </div>
-                        <div style="font-size:12px;color:#666;line-height:1.6;margin-top:6px;">
-                            「评论」Tab 内输入留言，点【发送】 → 云端实时同步。作者可在右下角 💬 看到全部反馈
-                        </div>
-                    </div>
-                    <div class="help-step" data-step="3" onclick="switchHelpStep(3)" style="padding:12px 14px;border:1.5px solid #f0f0f0;background:white;border-radius:10px;cursor:pointer;transition:all 0.15s;">
-                        <div style="font-size:13px;font-weight:600;color:#333;display:flex;align-items:center;gap:6px;">
-                            <span style="background:#999;color:white;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">3</span>
-                            ⚡ AI 修改
-                        </div>
-                        <div style="font-size:12px;color:#666;line-height:1.6;margin-top:6px;">
-                            切到「AI 修改」Tab，输入诉求（如"改成蓝色"/"删掉黄底"），3-15 秒生效；改坏点【📜版本历史】回滚
-                        </div>
-                    </div>
+                <div id="helpSteps" style="width:45%;padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+                    <!-- 步骤会按 device 动态注入 -->
                 </div>
             </div>
             <!-- footer -->
@@ -467,8 +500,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 wZX9pYQIGrydt3idh9rRJu21Hld+VLxpDwMh0ddnWdxU/ZXDgorBx6bKzUALEnTMm56s2HOSTeLZQlnByH7X8KN2z4+IO5DM8XHk13VUbRJjsAJ1ybmGNzH+2a2cJGPFQOqABEbz5EJlrXZZVeQxyODvT4RBZ3KTWw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'wZX9pYQIGrydt3idh9rRJu21Hld+VLxpDwMh0ddnWdxU/ZXDgorBx6bKzUALEnTMm56s2HOSTeLZQlnByH7X8KN2z4+IO5DM8XHk13VUbRJjsAJ1ybmGNzH+2a2cJGPFQOqABEbz5EJlrXZZVeQxyODvT4RBZ3KTWw==';
+        // 部署脚本会把 EP73J2nMH4zdpFuHhO/Xi7a3+RN/cLjaXZtiBhc0xNu6Gh6Sk1P6P9sBLt2Y9AjEniLrAZ13cqN0stEV8ZXejBowhhpJmdtI3AlqHKrEby2W7gkLiNOkGvq+84uClUg9H7UWkMNI0vqL1IG5tSRYqT0h2zBvLWlNYA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'EP73J2nMH4zdpFuHhO/Xi7a3+RN/cLjaXZtiBhc0xNu6Gh6Sk1P6P9sBLt2Y9AjEniLrAZ13cqN0stEV8ZXejBowhhpJmdtI3AlqHKrEby2W7gkLiNOkGvq+84uClUg9H7UWkMNI0vqL1IG5tSRYqT0h2zBvLWlNYA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -834,6 +867,7 @@
             }
 
             document.getElementById('commentPanel').classList.add('open');
+            document.body.classList.add('panel-open');
             switchPanelTab(initialTab || 'comment');
             // 静默尝试加载已缓存的密钥（不弹密码框）
             await ensureKeys();
@@ -842,11 +876,12 @@
 
         function closePanel() {
             document.getElementById('commentPanel').classList.remove('open');
+            document.body.classList.remove('panel-open', 'panel-expanded');
             currentSection = null;
             currentTarget = null;
             currentMultiItems = null;
             currentScope = { kind: 'all' };
-            // 关闭面板的同时清掉选区高亮（避免页面留着蓝色选中态但面板已关）
+            // 关闭面板的同时清掉选区高亮
             document.querySelectorAll('.selected-target').forEach(el => el.classList.remove('selected-target'));
             selectedTargets = [];
             document.body.classList.remove('selection-mode');
@@ -1620,6 +1655,7 @@
                 // 如果当前面板正是多选 scope，关闭它
                 if (currentScope && currentScope.kind === 'multi') {
                     document.getElementById('commentPanel').classList.remove('open');
+                    document.body.classList.remove('panel-open', 'panel-expanded');
                     currentScope = { kind: 'all' };
                     currentMultiItems = null;
                 }
@@ -1650,20 +1686,52 @@
             // 已废弃：每个元素单独绑定。现在统一在 document 级别处理。
         }
 
+        // 工具：判断当前是否手机视图
+        function isMobileView() { return document.body.classList.contains('mobile-view'); }
+
         // ========= 统一的 click 入口（document 级 capture） =========
-        // 三种情况：
-        // 1. ⌘/Ctrl + click 或 已在多选态：加入选区
-        // 2. 展示评论态 + 单击有评论的子元素：直接打开评论区显示该元素的评论（不进入多选）
-        // 3. 其他单击：放过（纯阅读）
+        // 行为分支：
+        // PC:
+        //   - ⌘/Ctrl + click 或多选态 → 加入选区
+        //   - 展示评论态 + 点有评论元素 → 打开过滤面板
+        // 手机:
+        //   - 隐藏评论态 → 单击什么都不做（与 PC 一致）
+        //   - 展示评论态 → 单击元素=选中（圆点+面板刷新），点空白=清空选区
         document.addEventListener('click', (e) => {
             const showComments = document.body.classList.contains('show-comments');
             const isCmd = e.metaKey || e.ctrlKey;
             const inSel = isInSelectionMode();
+            const mobile = isMobileView();
             // UI 控件不处理
             if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn, #helpBtn, #helpModal, .view-switcher, #marqueeBox')) return;
 
+            // ====== 手机：展示评论态下，单击元素=选中（无 ⌘ 概念） ======
+            if (mobile && showComments) {
+                let target = e.target.closest('.commentable-text, .commentable-image, .commentable-data');
+                if (!target) {
+                    const moduleEl = e.target.closest('.commentable[data-section]');
+                    if (moduleEl) {
+                        if (!moduleEl.dataset.targetId) moduleEl.dataset.targetId = 'mod-' + moduleEl.dataset.section;
+                        target = moduleEl;
+                    }
+                }
+                if (target) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleTargetSelection(target);
+                    return;
+                }
+                // 点空白 = 清空选区
+                if (inSel) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    exitSelectionMode();
+                }
+                return;
+            }
+
+            // ====== PC：⌘+click 进多选 ======
             if (isCmd || inSel) {
-                // 多选模式
                 let target = e.target.closest('.commentable-text, .commentable-image, .commentable-data');
                 if (!target) {
                     const moduleEl = e.target.closest('.commentable[data-section]');
@@ -1679,7 +1747,7 @@
                 return;
             }
 
-            // 展示评论态 + 单击有评论的元素 → 直接打开该元素的评论区（不进入多选）
+            // ====== PC：展示评论态 + 单击有评论的元素 → 打开过滤面板 ======
             if (showComments) {
                 const target = e.target.closest('[data-target-id].has-comments, .commentable[data-section].has-comments');
                 if (target) {
@@ -1688,7 +1756,6 @@
                     if (target.classList.contains('commentable-text') || target.classList.contains('commentable-image') || target.classList.contains('commentable-data')) {
                         openPanel({ kind: 'target', el: target });
                     } else {
-                        // 模块整体
                         openPanel(target.dataset.section);
                     }
                 }
@@ -1854,7 +1921,7 @@
 
         // 三个步骤的 SVG 动画（CSS animation 驱动）
         const HELP_ANIMS = {
-            1: `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
+            "pc-1": `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
                 <style>
                     @keyframes step1-cursor { 0% { transform: translate(20px,200px); } 30% { transform: translate(120px,90px); } 60% { transform: translate(120px,90px); } 100% { transform: translate(120px,90px); } }
                     @keyframes step1-key { 0%,29% { opacity:0; transform: translate(170px,200px) scale(0.9);} 30%,100% { opacity:1; transform: translate(170px,200px) scale(1);} }
@@ -1892,7 +1959,7 @@
                 </g>
             </svg>`,
 
-            2: `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
+            "pc-2": `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
                 <style>
                     @keyframes step2-typing {
                         0%,15% { width: 0; } 50% { width: 120px; } 100% { width: 120px; }
@@ -1931,7 +1998,7 @@
                 </g>
             </svg>`,
 
-            3: `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
+            "pc-3": `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
                 <style>
                     @keyframes step3-tab {
                         0%,10% { fill: #999; } 20%,100% { fill: #667eea; }
@@ -1976,28 +2043,195 @@
                 <g class="s3-spinner">
                     <circle class="s3-spinner-icon" cx="240" cy="268" r="8" fill="none" stroke="#ffa500" stroke-width="2" stroke-dasharray="20 12"/>
                 </g>
+            </svg>`,
+
+            // ===== 手机端动画 =====
+            "mobile-1": `<svg class="help-svg" viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg">
+                <style>
+                    @keyframes m1-finger { 0% { opacity: 0; transform: translate(60px,260px); } 20% { opacity: 1; transform: translate(60px,180px); } 40%,100% { opacity: 1; transform: translate(60px,180px); } }
+                    @keyframes m1-check { 0%,40% { opacity: 0; transform: scale(0.4); } 50%,100% { opacity: 1; transform: scale(1); } }
+                    @keyframes m1-elem { 0%,40% { stroke: #ddd; fill: white; } 50%,100% { stroke: #667eea; stroke-width: 2; fill: rgba(102,126,234,0.08); } }
+                    .m1-finger { animation: m1-finger 3s ease-out infinite; }
+                    .m1-check { animation: m1-check 3s linear infinite; transform-origin: 50px 170px; }
+                    .m1-elem { animation: m1-elem 3s linear infinite; }
+                </style>
+                <!-- 手机外框 -->
+                <rect x="20" y="10" width="200" height="340" rx="22" fill="white" stroke="#333" stroke-width="2"/>
+                <rect x="32" y="30" width="176" height="300" rx="4" fill="#fafbff"/>
+                <!-- 模块卡片 -->
+                <rect x="40" y="50" width="160" height="100" rx="6" fill="white" stroke="#e0e0e0"/>
+                <rect x="50" y="62" width="60" height="10" rx="2" fill="#f0f0f0"/>
+                <rect class="m1-elem" x="50" y="80" width="140" height="22" rx="3"/>
+                <rect x="50" y="112" width="100" height="8" rx="2" fill="#eee"/>
+                <rect x="50" y="126" width="80" height="8" rx="2" fill="#eee"/>
+                <!-- 选中圆点 -->
+                <g class="m1-check">
+                    <circle cx="50" cy="170" r="9" fill="#667eea"/>
+                    <text x="50" y="174" fill="white" font-size="11" font-weight="700" text-anchor="middle">✓</text>
+                </g>
+                <!-- 重新放置选中圆在元素左上 -->
+                <!-- 手指 -->
+                <g class="m1-finger">
+                    <circle cx="30" cy="30" r="22" fill="rgba(102,126,234,0.2)"/>
+                    <circle cx="30" cy="30" r="14" fill="rgba(102,126,234,0.5)"/>
+                </g>
+                <!-- 文字提示 -->
+                <text x="120" y="280" font-size="11" fill="#999" text-anchor="middle">点元素 → 左上角出现 ✓</text>
+                <text x="120" y="300" font-size="10" fill="#bbb" text-anchor="middle">先开「展示评论」</text>
+            </svg>`,
+
+            "mobile-2": `<svg class="help-svg" viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg">
+                <style>
+                    @keyframes m2-drawer { 0% { transform: translateY(180px); } 30%,100% { transform: translateY(0); } }
+                    @keyframes m2-typing { 0%,40% { width: 0; } 70%,100% { width: 100px; } }
+                    @keyframes m2-send { 0%,75% { fill: #667eea; } 80%,90% { fill: #4a5fc7; } 100% { fill: #667eea; } }
+                    .m2-drawer { animation: m2-drawer 3s ease-out infinite; }
+                    .m2-text { animation: m2-typing 3s ease-out infinite; }
+                    .m2-send { animation: m2-send 3s linear infinite; }
+                </style>
+                <rect x="20" y="10" width="200" height="340" rx="22" fill="white" stroke="#333" stroke-width="2"/>
+                <rect x="32" y="30" width="176" height="300" rx="4" fill="#fafbff"/>
+                <!-- 上方页面内容缩略 -->
+                <rect x="40" y="46" width="160" height="50" rx="4" fill="white" stroke="#e0e0e0"/>
+                <rect x="50" y="58" width="60" height="6" rx="2" fill="#eee"/>
+                <rect x="50" y="72" width="100" height="6" rx="2" fill="#eee"/>
+                <!-- 抽屉 -->
+                <g class="m2-drawer">
+                    <rect x="32" y="170" width="176" height="160" rx="14" fill="white" stroke="#e0e0e0"/>
+                    <!-- 把手 -->
+                    <rect x="106" y="178" width="28" height="3" rx="1.5" fill="#ccc"/>
+                    <!-- Tab -->
+                    <text x="80" y="208" fill="#333" font-size="10" font-weight="600">💬 评论</text>
+                    <text x="160" y="208" fill="#999" font-size="10">⚡ AI</text>
+                    <line x1="40" y1="216" x2="120" y2="216" stroke="#667eea" stroke-width="2"/>
+                    <!-- 评论列表 -->
+                    <rect x="44" y="226" width="152" height="36" rx="4" fill="#f8f8f8"/>
+                    <rect x="52" y="234" width="50" height="5" rx="2" fill="#999"/>
+                    <rect x="52" y="244" width="100" height="5" rx="2" fill="#aaa"/>
+                    <!-- 输入框 -->
+                    <rect x="44" y="276" width="120" height="22" rx="4" fill="white" stroke="#e0e0e0"/>
+                    <rect class="m2-text" x="50" y="285" height="4" rx="2" fill="#333" style="width:0"/>
+                    <!-- 发送 -->
+                    <rect class="m2-send" x="170" y="276" width="26" height="22" rx="4"/>
+                    <text x="183" y="292" fill="white" font-size="9" text-anchor="middle">发</text>
+                </g>
+            </svg>`,
+
+            "mobile-3": `<svg class="help-svg" viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg">
+                <style>
+                    @keyframes m3-tab { 0%,15% { transform: translateX(-80px); } 30%,100% { transform: translateX(0); } }
+                    @keyframes m3-typing { 0%,30% { width: 0; } 60%,100% { width: 110px; } }
+                    @keyframes m3-spin { 100% { transform: rotate(360deg); } }
+                    @keyframes m3-changed { 0%,75% { fill: #333; } 85%,100% { fill: #ff5252; } }
+                    .m3-tab { animation: m3-tab 3s linear infinite; transform-origin: 100px 0; }
+                    .m3-text { animation: m3-typing 3s ease-out infinite; }
+                    .m3-spin { animation: m3-spin 1s linear infinite; transform-origin: center; transform-box: fill-box; }
+                    .m3-changed { animation: m3-changed 3s linear infinite; }
+                </style>
+                <rect x="20" y="10" width="200" height="340" rx="22" fill="white" stroke="#333" stroke-width="2"/>
+                <rect x="32" y="30" width="176" height="300" rx="4" fill="#fafbff"/>
+                <!-- 上方内容 -->
+                <rect x="40" y="46" width="160" height="50" rx="4" fill="white" stroke="#e0e0e0"/>
+                <text x="50" y="68" font-size="11" fill="#999">📝 标题</text>
+                <text class="m3-changed" x="50" y="86" font-size="13" font-weight="600">数字 40w</text>
+                <!-- 抽屉（已展开） -->
+                <rect x="32" y="120" width="176" height="210" rx="14" fill="white" stroke="#e0e0e0"/>
+                <rect x="106" y="128" width="28" height="3" rx="1.5" fill="#ccc"/>
+                <!-- Tab：AI 修改高亮 -->
+                <text x="80" y="158" fill="#999" font-size="10">💬 评论</text>
+                <text x="160" y="158" fill="#667eea" font-size="10" font-weight="600">⚡ AI</text>
+                <g class="m3-tab">
+                    <line x1="120" y1="166" x2="200" y2="166" stroke="#667eea" stroke-width="2"/>
+                </g>
+                <!-- 输入框 -->
+                <rect x="44" y="180" width="152" height="40" rx="4" fill="white" stroke="#e0e0e0"/>
+                <rect class="m3-text" x="50" y="196" height="6" rx="2" fill="#333" style="width:0"/>
+                <!-- 发送+spinner -->
+                <rect x="44" y="232" width="152" height="32" rx="6" fill="#667eea"/>
+                <text x="120" y="252" fill="white" font-size="11" font-weight="600" text-anchor="middle">⚡ 用 AI 修改</text>
+                <!-- 旁注 -->
+                <text x="120" y="290" font-size="10" fill="#999" text-anchor="middle">3-15 秒生效</text>
+                <text x="120" y="306" font-size="9" fill="#bbb" text-anchor="middle">改坏了【版本历史】回滚</text>
             </svg>`
         };
 
+        // 步骤数据 + 按设备区分
+        const HELP_STEPS = {
+            pc: [
+                { num: 1, title: '⌘ 选中元素', desc: '按住 ⌘（Mac）/ Ctrl（Win）单击模块中的文案、图片、数据；也可拖动框选多个；松开后右侧自动弹出评论区' },
+                { num: 2, title: '写评论', desc: '「评论」Tab 内输入留言，点【发送】→ 云端实时同步。作者可在右下角 💬 看到全部反馈' },
+                { num: 3, title: '⚡ AI 修改', desc: '切到「AI 修改」Tab，输入诉求（如"改成蓝色"/"删掉黄底"），3-15 秒生效；改坏点【📜版本历史】回滚' }
+            ],
+            mobile: [
+                { num: 1, title: '点元素=选中', desc: '先点【展示评论】切到展示态，再单击元素，左上角出现 ✓ 圆点表示已选；可继续点其他元素叠加多选；点空白处取消' },
+                { num: 2, title: '底部抽屉评论', desc: '选中后底部弹出半屏抽屉评论区；点抽屉顶部把手可上拉到全屏；输入留言点【发送】即可' },
+                { num: 3, title: '⚡ AI 修改', desc: '抽屉里切到「AI 修改」Tab，输入诉求（如"改成蓝色"），3-15 秒生效；点【📜版本历史】可一键回滚' }
+            ]
+        };
+
+        let currentHelpDevice = 'pc';
+        let currentHelpStep = 1;
+
+        function renderHelpSteps() {
+            const wrap = document.getElementById('helpSteps');
+            if (!wrap) return;
+            const steps = HELP_STEPS[currentHelpDevice];
+            wrap.innerHTML = steps.map(s => {
+                const active = s.num === currentHelpStep;
+                return `<div class="help-step${active ? ' active' : ''}" data-step="${s.num}" onclick="switchHelpStep(${s.num})" style="padding:12px 14px;border:1.5px solid ${active ? '#667eea' : '#f0f0f0'};background:${active ? '#f0f4ff' : 'white'};border-radius:10px;cursor:pointer;transition:all 0.15s;">
+                    <div style="font-size:13px;font-weight:600;color:#333;display:flex;align-items:center;gap:6px;">
+                        <span style="background:${active ? '#667eea' : '#999'};color:white;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">${s.num}</span>
+                        ${s.title}
+                    </div>
+                    <div style="font-size:12px;color:#666;line-height:1.6;margin-top:6px;">${s.desc}</div>
+                </div>`;
+            }).join('');
+        }
+
         function switchHelpStep(n) {
-            document.querySelectorAll('.help-step').forEach(el => {
-                const num = parseInt(el.dataset.step);
-                el.classList.toggle('active', num === n);
-                const numCircle = el.querySelector('span');
-                if (numCircle) numCircle.style.background = num === n ? '#667eea' : '#999';
-            });
+            currentHelpStep = n;
+            renderHelpSteps();
             const anim = document.getElementById('helpAnim');
-            if (anim) anim.innerHTML = HELP_ANIMS[n] || '';
+            const animKey = currentHelpDevice + '-' + n;
+            if (anim) anim.innerHTML = HELP_ANIMS[animKey] || HELP_ANIMS[n] || '';
+        }
+
+        function switchHelpDevice(device) {
+            currentHelpDevice = device;
+            currentHelpStep = 1;
+            // device-tab 激活态
+            document.querySelectorAll('.device-tab').forEach(b => {
+                const act = b.dataset.device === device;
+                b.classList.toggle('active', act);
+                b.style.background = act ? '#f0f4ff' : 'transparent';
+                b.style.color = act ? '#667eea' : '#999';
+                b.style.borderBottomColor = act ? '#667eea' : 'transparent';
+            });
+            renderHelpSteps();
+            switchHelpStep(1);
         }
 
         function openHelp() {
             document.getElementById('helpModal').style.display = 'flex';
-            switchHelpStep(1);
+            // 按当前视图自动选 device tab
+            const device = isMobileView() ? 'mobile' : 'pc';
+            switchHelpDevice(device);
         }
         function closeHelp() {
             document.getElementById('helpModal').style.display = 'none';
             localStorage.setItem(HELP_KEY, '1');
         }
+
+        // 手机抽屉：点 panel-header 区域切换 expanded（半屏 ↔ 接近全屏）
+        document.addEventListener('click', (e) => {
+            if (!isMobileView()) return;
+            const panel = document.getElementById('commentPanel');
+            if (!panel || !panel.classList.contains('open')) return;
+            const header = e.target.closest('.panel-header');
+            if (!header) return;
+            if (e.target.closest('.panel-close, .panel-tab, button')) return;
+            document.body.classList.toggle('panel-expanded');
+        });
 
         // 首次访问自动弹（每个用户只弹一次）
         (function maybeShowHelp() {
@@ -2006,14 +2240,14 @@
             }
         })();
 
-        // 评论可见性切换（默认根据localStorage，没记录就默认隐藏）
+        // 评论可见性切换（按钮文字=当前状态：白底"隐藏评论"=隐藏中；蓝底"展示评论"=展示中）
         function toggleCommentVisibility() {
             const on = !document.body.classList.contains('show-comments');
             document.body.classList.toggle('show-comments', on);
             localStorage.setItem('show_comments', on ? '1' : '0');
             const btn = document.getElementById('toggleCommentVisBtn');
             if (btn) {
-                btn.textContent = on ? '隐藏评论' : '展示评论';
+                btn.textContent = on ? '展示评论' : '隐藏评论';
                 btn.style.background = on ? '#667eea' : 'white';
                 btn.style.color = on ? 'white' : '#666';
                 btn.style.borderColor = on ? '#667eea' : '#e0e0e0';
@@ -2026,7 +2260,7 @@
             document.body.classList.toggle('show-comments', on);
             const btn = document.getElementById('toggleCommentVisBtn');
             if (btn) {
-                btn.textContent = on ? '隐藏评论' : '展示评论';
+                btn.textContent = on ? '展示评论' : '隐藏评论';
                 btn.style.background = on ? '#667eea' : 'white';
                 btn.style.color = on ? 'white' : '#666';
                 btn.style.borderColor = on ? '#667eea' : '#e0e0e0';
