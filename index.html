@@ -746,8 +746,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 ass++p4nk6/Ja9Sh1Mma/GTGPknOVJlaDubwSh4QR01BMhTAnjq6WKqL3tYrI/UbY/6fTITE666TJwmZdjuIh72hejCwym73ZTM4oOUy49ZCrYi7OjZJ2eTqt7+AmgSqrvVH0B1a+Lj0yG7THeYxCSJ2qFsHa7/E4Q== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'ass++p4nk6/Ja9Sh1Mma/GTGPknOVJlaDubwSh4QR01BMhTAnjq6WKqL3tYrI/UbY/6fTITE666TJwmZdjuIh72hejCwym73ZTM4oOUy49ZCrYi7OjZJ2eTqt7+AmgSqrvVH0B1a+Lj0yG7THeYxCSJ2qFsHa7/E4Q==';
+        // 部署脚本会把 crCS2awypqsZbBz0tl36oVvtE+kCrMrBq4n9PQeqYit/eV4vwmmxEdmatNVmQtgFoCShB0Ikcs5hDpfeu12Hn9a+x+KGPuNVv7nhEa3XQIkUGnBkBiVw5l2hn2IYMS2PG0lewjgqWqVhmSdzKXJoUCpgsZDJnELmdA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'crCS2awypqsZbBz0tl36oVvtE+kCrMrBq4n9PQeqYit/eV4vwmmxEdmatNVmQtgFoCShB0Ikcs5hDpfeu12Hn9a+x+KGPuNVv7nhEa3XQIkUGnBkBiVw5l2hn2IYMS2PG0lewjgqWqVhmSdzKXJoUCpgsZDJnELmdA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -3004,21 +3004,33 @@
                 animArea.style.display = 'none';
                 stepsArea.style.width = '100%';
                 stepsArea.innerHTML = `
-                    <div style="padding:8px 6px;line-height:1.8;">
-                        <h2 style="font-size:18px;margin:0 0 6px;color:#1f2937;">📐 方案在线汇报工具</h2>
-                        <p style="font-size:11px;color:#999;margin:0 0 14px;">by leomrli · AI + GitHub 云端 · 零安装</p>
-                        <p style="font-size:13px;color:#444;margin:0 0 14px;">
-                            把 Word / PPT / Markdown 方案<b>转成 HTML 并部署到云端</b>，自带评论、AI 实时改、多视图能力——生成一个链接，老板打开就能看、能评、能让 AI 当场改。
+                    <div style="padding:8px 6px;line-height:1.7;">
+                        <h2 style="font-size:18px;margin:0 0 4px;color:#1f2937;">方案 HTML 化在线汇报部署工具</h2>
+                        <p style="font-size:11px;color:#999;margin:0 0 14px;">by leomrli · 基于 AI + GitHub 云端</p>
+
+                        <h3 style="font-size:13px;margin:0 0 6px;color:#1f2937;">🧩 是什么</h3>
+                        <p style="font-size:12px;color:#555;margin:0 0 12px;">
+                            把 Word / PPT / Markdown 方案转成 HTML，加上在线评论 + AI 实时改 + 多视图能力，一键部署到云端。生成一条链接发给老板/同事，打开就能看、能评、能让 AI 当场改。
                         </p>
-                        <h3 style="font-size:14px;margin:14px 0 6px;color:#1f2937;">核心能力</h3>
-                        <ul style="font-size:12px;color:#555;padding-left:18px;margin:0 0 12px;line-height:1.9;">
-                            <li><b>颗粒度评论</b> — 点任意文字/图片/数据直接评；PC 还支持 ⌘+click 多选 / 拖动框选跨元素批量评（手机无框选）</li>
-                            <li><b>AI 实时改</b> — 选元素描述改动，3-15 秒页面直接变（最多 6 个元素/次）</li>
-                            <li><b>版本可撤回</b> — 每次 AI 改存档，点一下回到改之前</li>
-                            <li><b>PC / 手机双视图</b> — 同链接自适应，PC 看全景、手机抽屉式评论</li>
-                            <li><b>评论可导出</b> — owner 一键导出全部反馈，丢给 WorkBuddy 批量返工</li>
+
+                        <h3 style="font-size:13px;margin:0 0 6px;color:#1f2937;">❗ 解决什么问题</h3>
+                        <p style="font-size:12px;color:#555;margin:0 0 12px;">
+                            以前看方案 → 截图批注 → 拉群讨论 → 回去改稿 → 再发 → 反复几轮。<br>
+                            现在打开链接直接在页面上评论或让 AI 改，所有人看到的都是同一份最新版，反馈零成本、迭代秒级。
+                        </p>
+
+                        <h3 style="font-size:13px;margin:0 0 6px;color:#1f2937;">⚡ 核心能力</h3>
+                        <ul style="font-size:12px;color:#555;padding-left:18px;margin:0 0 12px;line-height:1.8;">
+                            <li><b>颗粒度评论</b> — 点任意文字/图片/数据直接评；PC 支持 ⌘+click 多选 / 拖动框选跨元素批量评</li>
+                            <li><b>AI 实时改</b> — 选中元素描述改动（换词、改色、删元素），3-15 秒页面直接变（单次最多 6 个）</li>
+                            <li><b>版本可撤回</b> — 每次 AI 改前自动存档，一键回到改之前</li>
+                            <li><b>评论可导出</b> — 方案 owner 一键导出全部反馈，丢给 WorkBuddy 批量返工</li>
+                            <li><b>PC / 手机双视图</b> — 同链接自适应，能力一致（手机唯一区别：不支持拖动框选）</li>
+                            <li><b>零安装</b> — 浏览器打开链接输密码就能用，不装 App、不登录</li>
                         </ul>
-                        <p style="font-size:12px;color:#555;margin:0 0 12px;">按你当前设备查看操作指南：</p>
+
+                        <h3 style="font-size:13px;margin:0 0 8px;color:#1f2937;">🚀 怎么用</h3>
+                        <p style="font-size:12px;color:#555;margin:0 0 10px;">按当前设备查看操作指南：</p>
                         <div style="display:flex;gap:12px;">
                             <button onclick="switchHelpDevice('pc')" style="flex:1;padding:12px;background:#f0f4ff;border:1.5px solid #667eea;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#667eea;">💻 PC 端指南 →</button>
                             <button onclick="switchHelpDevice('mobile')" style="flex:1;padding:12px;background:#f0fdf4;border:1.5px solid #10b981;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#10b981;">📱 手机端指南 →</button>
