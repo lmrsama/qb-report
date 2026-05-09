@@ -742,8 +742,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 IX8XtjHQfadL4EXvAdSWBSMl47qnAEgEu5i2/qGfk0RecGRJXKCTA8ORSLv6j0hyxfUlPLD7zp37aydU7F769JFvxsAojjDr6Pe3zho7GETqmMxhDqtMCmqifF150OIJbNj8nfrtqBZKIW2yl9Jao4D3VXE4jwEkIw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'IX8XtjHQfadL4EXvAdSWBSMl47qnAEgEu5i2/qGfk0RecGRJXKCTA8ORSLv6j0hyxfUlPLD7zp37aydU7F769JFvxsAojjDr6Pe3zho7GETqmMxhDqtMCmqifF150OIJbNj8nfrtqBZKIW2yl9Jao4D3VXE4jwEkIw==';
+        // 部署脚本会把 f8vf6svUfTSNEu1HU/sPKHQmlUvfbbcbOvH7bhWQlumhpNtHOtrWQ8az82lKpuQzVGmRliVblRK3eVZ+v9B2ttaUJvTO35UK5RvaDcj8l9D5ZK1aYQrgMnqAfAwFBSdEkFSvukI/PqTnyEXvrrHoO7SziL7fXo3M2g== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'f8vf6svUfTSNEu1HU/sPKHQmlUvfbbcbOvH7bhWQlumhpNtHOtrWQ8az82lKpuQzVGmRliVblRK3eVZ+v9B2ttaUJvTO35UK5RvaDcj8l9D5ZK1aYQrgMnqAfAwFBSdEkFSvukI/PqTnyEXvrrHoO7SziL7fXo3M2g==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2039,11 +2039,22 @@
                     headers: { 'Authorization': `token ${k.token}` }
                 });
                 const data = await res.json();
-                if (data.files[VERSIONS_FILENAME]) {
-                    return JSON.parse(data.files[VERSIONS_FILENAME].content);
+                const file = data.files && data.files[VERSIONS_FILENAME];
+                if (!file) return [];
+                // v2.11.18：GitHub Gist content > 1MB 时会被 truncated，必须从 raw_url 拉完整内容
+                // 否则 JSON.parse 失败 → 返回 []，后续 saveVersion 会用 [] 覆盖整个文件 → 历史全丢
+                let content = file.content;
+                if (file.truncated && file.raw_url) {
+                    const rawRes = await fetch(file.raw_url, {
+                        headers: { 'Authorization': `token ${k.token}` }
+                    });
+                    content = await rawRes.text();
                 }
-            } catch(e) {}
-            return [];
+                return JSON.parse(content);
+            } catch(e) {
+                console.error('[loadVersions] 解析失败，为防止历史被覆盖，抛出错误', e);
+                throw e; // v2.11.18：不再静默返回 []，宁可让上层 saveVersion 失败也不能丢历史
+            }
         }
 
         // 仅当最新版本不是同一个snapshot时才保存（避免重复存）
@@ -2060,6 +2071,16 @@
             // 否则下次 restoreLatestSnapshot 会把脏 class 写回 DOM，新用户看到默认选中态
             const containerClone = document.querySelector('.container').cloneNode(true);
             stripRuntimeForAI(containerClone);
+            // v2.11.18：把 base64 图片 src 替换成占位符（保留 alt/data-* 等属性）
+            // 恢复时用当前 DOM 同序号 img 的 src 回填，避免 snapshot 体积爆炸（1MB Gist 限制）
+            const imgs = containerClone.querySelectorAll('img');
+            imgs.forEach((img, idx) => {
+                const src = img.getAttribute('src') || '';
+                if (src.startsWith('data:')) {
+                    img.setAttribute('data-img-idx', String(idx));
+                    img.setAttribute('src', `__IMG_PLACEHOLDER_${idx}__`);
+                }
+            });
             const snapshot = containerClone.outerHTML;
             const versions = await loadVersions();
             const versionNum = versions.length + 1;
@@ -2071,7 +2092,7 @@
                 prompt: prompt,
                 snapshot: snapshot
             });
-            const trimmed = versions.slice(-20);
+            const trimmed = versions.slice(-5);
             try {
                 const k = await ensureKeys();
                 if (!k) return versionNum;
@@ -2112,14 +2133,42 @@
             document.getElementById('versionModal').style.display = 'none';
         }
 
+        // v2.11.18：从当前页面收集 img base64 src，按 idx 索引（用于恢复 snapshot 占位符）
+        function collectImageSrcs() {
+            const map = {};
+            document.querySelectorAll('.container img').forEach((img, idx) => {
+                const src = img.getAttribute('src') || '';
+                if (src.startsWith('data:')) map[idx] = src;
+            });
+            return map;
+        }
+        function restoreImagePlaceholders(rootEl, srcMap) {
+            // rootEl 是新插入的 container，里面 src 是 __IMG_PLACEHOLDER_N__
+            rootEl.querySelectorAll('img').forEach(img => {
+                const src = img.getAttribute('src') || '';
+                const m = src.match(/^__IMG_PLACEHOLDER_(\d+)__$/);
+                if (m) {
+                    const idx = parseInt(m[1], 10);
+                    if (srcMap[idx]) {
+                        img.setAttribute('src', srcMap[idx]);
+                        img.removeAttribute('data-img-idx');
+                    }
+                }
+            });
+        }
+
         async function restoreVersion(v) {
             if (!confirm(`确定回滚到 v${v}？这会作为新版本写入历史，下次刷新就以这个为准。`)) return;
             const versions = await loadVersions();
             const target = versions.find(x => x.v === v);
             if (!target) return alert('版本不存在');
+            // 替换前先收集当前页面 img base64
+            const srcMap = collectImageSrcs();
             const newContainer = document.createElement('div');
             newContainer.innerHTML = target.snapshot;
             const oldContainer = document.querySelector('.container');
+            // 把 snapshot 里的图片占位符还原成真实 base64
+            if (newContainer.firstElementChild) restoreImagePlaceholders(newContainer.firstElementChild, srcMap);
             oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
             // 重新注入模块评论按钮 + 子粒度标记
             assignTargetIds();
@@ -2574,6 +2623,9 @@
                         if (oldContainer && newContainer.firstElementChild) {
                             // v2.11.15：恢复前先剥离 snapshot 里可能残留的运行时 class（防止历史污染）
                             stripRuntimeForAI(newContainer.firstElementChild);
+                            // v2.11.18：把图片占位符还原成本地 base64
+                            const srcMap = collectImageSrcs();
+                            restoreImagePlaceholders(newContainer.firstElementChild, srcMap);
                             oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
                             // 重新注入模块评论按钮 + 子粒度标记
                             assignTargetIds();
