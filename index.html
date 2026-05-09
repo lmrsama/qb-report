@@ -511,7 +511,7 @@
     </div>
     <!-- 顶部右上：只保留评论可见性切换 -->
     <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
-        <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" style="padding:7px 12px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;line-height:1.3;">展示评论</button>
+        <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" style="padding:7px 12px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:12px;color:#666;cursor:pointer;line-height:1.3;">批注</button>
         <button id="helpBtn" onclick="openHelp()" title="新手引导" style="width:32px;height:32px;background:white;border:1.5px solid #e0e0e0;border-radius:50%;font-size:14px;color:#667eea;cursor:pointer;line-height:1;font-weight:600;display:flex;align-items:center;justify-content:center;">?</button>
     </div>
 
@@ -738,8 +738,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 YgdNPTe53Bp/h8c5+r3VUXXSwy+XVPxws4FwmJrtC8Knmp6wCSsCW5NUcdLM0IUyJw3DcFy2rEW6cIZ1wUbcY5ws6IXvw4dMcyEzp6NIotic3HyxoigGekQ8T3kESRbLgtlYGd+4exirBuNv54Hmd7kQtaAaCqdDJQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'YgdNPTe53Bp/h8c5+r3VUXXSwy+XVPxws4FwmJrtC8Knmp6wCSsCW5NUcdLM0IUyJw3DcFy2rEW6cIZ1wUbcY5ws6IXvw4dMcyEzp6NIotic3HyxoigGekQ8T3kESRbLgtlYGd+4exirBuNv54Hmd7kQtaAaCqdDJQ==';
+        // 部署脚本会把 cGgd6Wt+V+JMOOoDfHAUvHNPm2K1tJj98zqphVzaPyIeRnIn7OWlbFAaa1w4JHIVKFUnUMZtMuSQL3gxQk84ZXdcvMnw3jGQkdP+E2U3b5BRecmEy97Cv2DLw1yRUh76q6s/bvoSgWNGDmuHS9hjYnYI3yP43heHtA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'cGgd6Wt+V+JMOOoDfHAUvHNPm2K1tJj98zqphVzaPyIeRnIn7OWlbFAaa1w4JHIVKFUnUMZtMuSQL3gxQk84ZXdcvMnw3jGQkdP+E2U3b5BRecmEy97Cv2DLw1yRUh76q6s/bvoSgWNGDmuHS9hjYnYI3yP43heHtA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2641,7 +2641,7 @@
                 </g>
                 <!-- 文字提示 -->
                 <text x="120" y="280" font-size="11" fill="#999" text-anchor="middle">点元素 → 左上角出现 ✓</text>
-                <text x="120" y="300" font-size="10" fill="#bbb" text-anchor="middle">先开「展示评论」</text>
+                <text x="120" y="300" font-size="10" fill="#bbb" text-anchor="middle">先开「批注」</text>
             </svg>`,
 
             "mobile-2": `<svg class="help-svg" viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg">
@@ -2722,14 +2722,14 @@
         // 步骤数据 + 按设备区分
         const HELP_STEPS = {
             pc: [
-                { num: 1, title: '⌘ 选中元素', desc: '按住 ⌘（Mac）/ Ctrl（Win）单击模块中的文案、图片、数据；也可拖动框选多个；松开后右侧自动弹出评论区' },
-                { num: 2, title: '写评论', desc: '「评论」Tab 内输入留言，点【发送】→ 云端实时同步。作者可在右下角 💬 看到全部反馈' },
-                { num: 3, title: '⚡ AI 修改', desc: '切到「AI 修改」Tab，输入诉求（如"改成蓝色"/"删掉黄底"），3-15 秒生效；改坏点【📜版本历史】回滚' }
+                { num: 1, title: '⌘ 选中元素', desc: '按住 ⌘（Mac）/ Ctrl（Win）单击文案/图片/数据 → 弹出小工具栏（💬 评论 / ✨ AI 修改）；也可拖动框选多个' },
+                { num: 2, title: '写评论 / AI 修改', desc: '点小工具栏的「💬 评论」或「✨ AI 修改」→ 元素旁出现输入框，回车发送；评论静默收录，AI 修改顶部提示进度' },
+                { num: 3, title: '只读 / 批注切换', desc: '右上角【批注】按钮切换：批注态可写评论 + 单击有评论元素查看历史；只读态纯阅读，仅适合给观众演示' }
             ],
             mobile: [
-                { num: 1, title: '点元素=选中', desc: '先点【展示评论】切到展示态，再单击元素，左上角出现 ✓ 圆点表示已选；可继续点其他元素叠加多选；点空白处取消' },
-                { num: 2, title: '底部抽屉评论', desc: '选中后底部弹出半屏抽屉评论区；点抽屉顶部把手可上拉到全屏；输入留言点【发送】即可' },
-                { num: 3, title: '⚡ AI 修改', desc: '抽屉里切到「AI 修改」Tab，输入诉求（如"改成蓝色"），3-15 秒生效；点【📜版本历史】可一键回滚' }
+                { num: 1, title: '开启批注模式', desc: '右上角【批注】按钮切到批注态（蓝底=批注中），即可单击元素留评论' },
+                { num: 2, title: '点元素弹卡片', desc: '单击文案/图片/数据 → 底部弹出评论卡片（半屏），上方显示该元素现有评论，下方输入框继续追加' },
+                { num: 3, title: '💬 评论 / ✨ AI 修改', desc: '输入诉求后点【💬 发表评论】记录建议，或点【✨ AI 修改】3-15 秒实时改 HTML；改坏可在 list 里看到，PC 端【📜 版本历史】回滚' }
             ]
         };
 
@@ -2804,14 +2804,14 @@
             }
         })();
 
-        // 评论可见性切换（按钮文字=当前状态：白底"隐藏评论"=隐藏中；蓝底"展示评论"=展示中）
+        // 评论可见性切换（按钮文字=当前状态：白底"只读"=只读中；蓝底"批注"=批注中）
         function toggleCommentVisibility() {
             const on = !document.body.classList.contains('show-comments');
             document.body.classList.toggle('show-comments', on);
             localStorage.setItem('show_comments', on ? '1' : '0');
             const btn = document.getElementById('toggleCommentVisBtn');
             if (btn) {
-                btn.textContent = on ? '展示评论' : '隐藏评论';
+                btn.textContent = on ? '批注' : '只读';
                 btn.style.background = on ? '#667eea' : 'white';
                 btn.style.color = on ? 'white' : '#666';
                 btn.style.borderColor = on ? '#667eea' : '#e0e0e0';
@@ -2824,7 +2824,7 @@
             document.body.classList.toggle('show-comments', on);
             const btn = document.getElementById('toggleCommentVisBtn');
             if (btn) {
-                btn.textContent = on ? '展示评论' : '隐藏评论';
+                btn.textContent = on ? '批注' : '只读';
                 btn.style.background = on ? '#667eea' : 'white';
                 btn.style.color = on ? 'white' : '#666';
                 btn.style.borderColor = on ? '#667eea' : '#e0e0e0';
