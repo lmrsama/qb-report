@@ -729,8 +729,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 aE8VFZGodL5PPpsN/hwWuV5fx2TO5iVgXVpsXKIm2VIB1TSYuQyk+rhuMqC5vTx9WZwGNPtVvN06AW+OOsFxpWhNyr8eCfcQi4rYAIpASJi/rHElMjAgBMXpXZE9m2t85oHRsShnK6WG7qgtFpOWgLnNyvd6wJRuRA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'aE8VFZGodL5PPpsN/hwWuV5fx2TO5iVgXVpsXKIm2VIB1TSYuQyk+rhuMqC5vTx9WZwGNPtVvN06AW+OOsFxpWhNyr8eCfcQi4rYAIpASJi/rHElMjAgBMXpXZE9m2t85oHRsShnK6WG7qgtFpOWgLnNyvd6wJRuRA==';
+        // 部署脚本会把 Bne2Lf4rDXWDFRVxeW9tMOlm0IIyUzaZdLCYbcVH6SiczYuOghRs2Zk17j+rVdYJkOOWWbLQEBdxQO/78bHRJQkiqP7fZlj80sj4YJIH0pS23/2ALTd4/XyrCYsbTMzlQX15v+iITOcYPARuZyUEuwqsuAW6cOMbng== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'Bne2Lf4rDXWDFRVxeW9tMOlm0IIyUzaZdLCYbcVH6SiczYuOghRs2Zk17j+rVdYJkOOWWbLQEBdxQO/78bHRJQkiqP7fZlj80sj4YJIH0pS23/2ALTd4/XyrCYsbTMzlQX15v+iITOcYPARuZyUEuwqsuAW6cOMbng==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2387,8 +2387,18 @@
                 // 点空白：如果面板正开着，关掉它
                 const panel = document.getElementById('commentPanel');
                 if (panel && panel.classList.contains('open')) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     closePanel();
+                    return;
                 }
+            }
+
+            // 兜底：批注态 + 隐藏态都管 —— 面板开着且点空白 → 关闭
+            // （以防上面分支因为 showComments 切换错过）
+            const panelEl = document.getElementById('commentPanel');
+            if (panelEl && panelEl.classList.contains('open') && !e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #helpModal, #bubbleToolbar, #bubbleInput, #topToast, #mobileCommentCard')) {
+                closePanel();
             }
         }, true);
 
