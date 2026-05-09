@@ -576,8 +576,8 @@
         <div class="bi-foot">
             <span class="bi-tip" id="biTipText">回车发送 · Shift+回车换行</span>
             <span class="bi-actions">
-                <button class="bi-cancel" onclick="hideBubbleInput()">取消</button>
-                <button class="bi-send" id="biSendBtn" onclick="bubbleSubmit()">发送</button>
+                <button class="bi-cancel" data-bi-action="cancel">取消</button>
+                <button class="bi-send" id="biSendBtn" data-bi-action="send">发送</button>
             </span>
         </div>
     </div>
@@ -738,8 +738,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 cGgd6Wt+V+JMOOoDfHAUvHNPm2K1tJj98zqphVzaPyIeRnIn7OWlbFAaa1w4JHIVKFUnUMZtMuSQL3gxQk84ZXdcvMnw3jGQkdP+E2U3b5BRecmEy97Cv2DLw1yRUh76q6s/bvoSgWNGDmuHS9hjYnYI3yP43heHtA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'cGgd6Wt+V+JMOOoDfHAUvHNPm2K1tJj98zqphVzaPyIeRnIn7OWlbFAaa1w4JHIVKFUnUMZtMuSQL3gxQk84ZXdcvMnw3jGQkdP+E2U3b5BRecmEy97Cv2DLw1yRUh76q6s/bvoSgWNGDmuHS9hjYnYI3yP43heHtA==';
+        // 部署脚本会把 VVkInAsBpF4RbdyKipKbYzOJODQpf0ayahonCP5Fd0QRcNGxAlhpXXX8ccajuwzt4ZkiBFdiRvFWAPElRvcHa+k/bGxk0zCt87Z3piGSGOjN9TCnGZJOyP5+qcJ+K1hZbD7ITPC5bSHW1HO5L69WCy647zYdBtf/3A== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'VVkInAsBpF4RbdyKipKbYzOJODQpf0ayahonCP5Fd0QRcNGxAlhpXXX8ccajuwzt4ZkiBFdiRvFWAPElRvcHa+k/bGxk0zCt87Z3piGSGOjN9TCnGZJOyP5+qcJ+K1hZbD7ITPC5bSHW1HO5L69WCy647zYdBtf/3A==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1396,6 +1396,12 @@
         function hideBubbleInput() {
             const ti = document.getElementById('bubbleInput');
             if (ti) ti.classList.remove('show');
+            // 输入框关闭后，如果还有选中元素，把小工具栏重新显示出来
+            if (isInSelectionMode()) {
+                const last = selectedTargets[selectedTargets.length - 1];
+                const el = last && document.querySelector(last.selector);
+                if (el) showBubbleToolbar(el);
+            }
         }
 
         async function bubbleSubmit() {
@@ -1481,8 +1487,18 @@
                     e.preventDefault(); // 不让 button 失焦
                 }, true);
             }
-            // bubbleInput 容器：不在 capture 阶段 stopPropagation（会阻止 button onclick 触发）
-            // document 顶部已经把 #bubbleInput 加进白名单 return 了，无需重复拦截
+            // bubbleInput 容器：用 capture 阶段直接监听 button click（数据驱动，不依赖 inline onclick）
+            const ti = document.getElementById('bubbleInput');
+            if (ti) {
+                ti.addEventListener('click', (e) => {
+                    const btn = e.target.closest('button[data-bi-action]');
+                    if (!btn) return;
+                    e.stopPropagation(); // 阻止冒泡到 document，避免误触退出选区等
+                    const action = btn.dataset.biAction;
+                    if (action === 'cancel') hideBubbleInput();
+                    else if (action === 'send') bubbleSubmit();
+                }, true);
+            }
         });
 
         // 滚动/resize 时如果气泡显示中，重新定位
@@ -2427,8 +2443,8 @@
         // ========= 点空白处退出多选 =========
         document.addEventListener('click', (e) => {
             if (!isInSelectionMode()) return;
-            // 点 评论面板 / FAB / 版本modal / 顶部按钮 / commentable 元素 都不算空白
-            if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn, #helpBtn, #helpModal')) return;
+            // 点 评论面板 / FAB / 版本modal / 顶部按钮 / commentable 元素 / v2.11 浮层 都不算空白
+            if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn, #helpBtn, #helpModal, #bubbleToolbar, #bubbleInput, #topToast, #mobileCommentCard')) return;
             if (e.target.closest('.commentable-text, .commentable-image, .commentable-data')) return;
             // ⌘/Ctrl 点击空白：可能是想框选误触，不退出
             if (e.metaKey || e.ctrlKey) return;
