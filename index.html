@@ -738,8 +738,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 jRrKtG1XZdi7QjAAlH7lKCkDVFtQ+FweUdu/NDagyC0SFZFXx+GZ2t4Sh745Y/czLtDPZe0EjgjMjpbKbrriK2ZS1YfGLPHzI5/ZwmFXqWNQiBizQ25fPtmFfTYMeIjFYVZ5hY2ofKsI8BYscXjRCUTTreK4gSWDuQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'jRrKtG1XZdi7QjAAlH7lKCkDVFtQ+FweUdu/NDagyC0SFZFXx+GZ2t4Sh745Y/czLtDPZe0EjgjMjpbKbrriK2ZS1YfGLPHzI5/ZwmFXqWNQiBizQ25fPtmFfTYMeIjFYVZ5hY2ofKsI8BYscXjRCUTTreK4gSWDuQ==';
+        // 部署脚本会把 eqLVxLBT7/ebcmakNxxY0lfwrUk29Myr6xg7d0H8cCFZcZmN7Fy5MHZzHFDxD748mzmqnNjn8Y436JNiJBsPP4Liy78Dsk1TSkTlzMZxHOmNytdeR2Flq6H5NJkcUtvMT8fiwTaIjzyS3ZTvMmtqILeUAEl4mwmriQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'eqLVxLBT7/ebcmakNxxY0lfwrUk29Myr6xg7d0H8cCFZcZmN7Fy5MHZzHFDxD748mzmqnNjn8Y436JNiJBsPP4Liy78Dsk1TSkTlzMZxHOmNytdeR2Flq6H5NJkcUtvMT8fiwTaIjzyS3ZTvMmtqILeUAEl4mwmriQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2352,7 +2352,7 @@
                 return;
             }
 
-            // ====== PC：展示评论态 + 单击有评论元素 → 打开右侧评论区，过滤显示 ======
+            // ====== PC：批注态 + 单击有评论元素 → 打开右侧评论区，过滤显示 ======
             // 不进选中态、不弹小气泡。可继续在面板里追加新评论。
             if (showComments) {
                 const target = e.target.closest('[data-target-id].has-comments, .commentable[data-section].has-comments');
@@ -2367,6 +2367,12 @@
                     } else {
                         openPanel(target.dataset.section);
                     }
+                    return;
+                }
+                // 点空白：如果面板正开着，关掉它
+                const panel = document.getElementById('commentPanel');
+                if (panel && panel.classList.contains('open')) {
+                    closePanel();
                 }
             }
         }, true);
