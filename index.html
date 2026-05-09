@@ -539,7 +539,8 @@
                 </div>
                 <!-- 设备 Tab -->
                 <div style="display:flex;gap:6px;">
-                    <button class="device-tab active" data-device="pc" onclick="switchHelpDevice('pc')" style="padding:6px 14px;border:none;background:#f0f4ff;color:#667eea;font-weight:600;border-radius:6px 6px 0 0;font-size:12px;cursor:pointer;border-bottom:2px solid #667eea;">💻 PC 端</button>
+                    <button class="device-tab active" data-device="about" onclick="switchHelpDevice('about')" style="padding:6px 14px;border:none;background:#f0f4ff;color:#667eea;font-weight:600;border-radius:6px 6px 0 0;font-size:12px;cursor:pointer;border-bottom:2px solid #667eea;">🏠 关于</button>
+                    <button class="device-tab" data-device="pc" onclick="switchHelpDevice('pc')" style="padding:6px 14px;border:none;background:transparent;color:#999;border-radius:6px 6px 0 0;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;">💻 PC 端</button>
                     <button class="device-tab" data-device="mobile" onclick="switchHelpDevice('mobile')" style="padding:6px 14px;border:none;background:transparent;color:#999;border-radius:6px 6px 0 0;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;">📱 手机端</button>
                 </div>
             </div>
@@ -745,8 +746,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 O0sg2B3+lgXgHqCvXdFgrcsuRRs/0gdd8qz15oMtjK0dNG1iShTt2z+ZPc+SFAeBLAri25He1METIcG9yaq8YgdivL/10N7cmfFpTH2DI4kquHPKVcrA3OdfSPH+/EJNWKQ8uU6rKFFHXgwDWNQF3grN+sOeW/OQpw== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'O0sg2B3+lgXgHqCvXdFgrcsuRRs/0gdd8qz15oMtjK0dNG1iShTt2z+ZPc+SFAeBLAri25He1METIcG9yaq8YgdivL/10N7cmfFpTH2DI4kquHPKVcrA3OdfSPH+/EJNWKQ8uU6rKFFHXgwDWNQF3grN+sOeW/OQpw==';
+        // 部署脚本会把 PC+2gKflToGaMBzNtYaeThC4WJkUYHZW27S5jSs5pBqkH/QzcuK0i7YKpA07J3jvL1QFnoQeSVchRYUXdN2Y5PpjjwrQvlGwaAeHy/Yk/g4fIxQX6/BhNHe8DEfanDteWvQn/07+Mu/D2TtpSCIgU92H1HjEBgepLw== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'PC+2gKflToGaMBzNtYaeThC4WJkUYHZW27S5jSs5pBqkH/QzcuK0i7YKpA07J3jvL1QFnoQeSVchRYUXdN2Y5PpjjwrQvlGwaAeHy/Yk/g4fIxQX6/BhNHe8DEfanDteWvQn/07+Mu/D2TtpSCIgU92H1HjEBgepLw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -3027,15 +3028,57 @@
                 b.style.color = act ? '#667eea' : '#999';
                 b.style.borderBottomColor = act ? '#667eea' : 'transparent';
             });
-            renderHelpSteps();
-            switchHelpStep(1);
+            const animArea = document.getElementById('helpAnim');
+            const stepsArea = document.getElementById('helpSteps');
+            if (device === 'about') {
+                // "关于" Tab：全宽介绍页
+                animArea.style.display = 'none';
+                stepsArea.style.width = '100%';
+                stepsArea.innerHTML = `
+                    <div style="padding:8px 6px;line-height:1.8;">
+                        <h2 style="font-size:18px;margin:0 0 10px;color:#1f2937;">这是什么？</h2>
+                        <p style="font-size:13px;color:#444;margin:0 0 12px;">
+                            这是一个 <b>HTML 在线汇报工具</b>——把方案稿变成一个链接，老板打开就能看、能评论、能让 AI 当场改。<br>
+                            不需要装任何软件，手机电脑都能打开。
+                        </p>
+                        <h3 style="font-size:14px;margin:16px 0 8px;color:#1f2937;">解决什么问题？</h3>
+                        <ul style="font-size:12px;color:#555;padding-left:18px;margin:0 0 12px;">
+                            <li>以前：看方案→截屏批注→拉群讨论→团队改→再发→反复几轮</li>
+                            <li>现在：打开链接直接在页面上评论/让 AI 改，所有人看到的是同一份最新版</li>
+                        </ul>
+                        <h3 style="font-size:14px;margin:16px 0 8px;color:#1f2937;">核心价值</h3>
+                        <ul style="font-size:12px;color:#555;padding-left:18px;margin:0 0 12px;">
+                            <li><b>反馈零成本</b>：看到哪不对，点那儿写一句就行，自动留痕</li>
+                            <li><b>AI 实时改</b>：说"数字改成50w"/"字色改蓝"，3-15秒生效</li>
+                            <li><b>版本可撤回</b>：AI 改坏了一键撤回到改之前</li>
+                        </ul>
+                        <h3 style="font-size:14px;margin:16px 0 8px;color:#1f2937;">怎么用？</h3>
+                        <p style="font-size:12px;color:#555;margin:0 0 16px;">
+                            👇 点击下方链接，查看对应设备的操作指南：
+                        </p>
+                        <div style="display:flex;gap:12px;">
+                            <button onclick="switchHelpDevice('pc')" style="flex:1;padding:12px;background:#f0f4ff;border:1.5px solid #667eea;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#667eea;">
+                                💻 PC 端操作指南
+                            </button>
+                            <button onclick="switchHelpDevice('mobile')" style="flex:1;padding:12px;background:#f0fdf4;border:1.5px solid #10b981;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#10b981;">
+                                📱 手机端操作指南
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // PC / 手机端：恢复左右拆分
+                animArea.style.display = 'flex';
+                stepsArea.style.width = '45%';
+                renderHelpSteps();
+                switchHelpStep(1);
+            }
         }
 
         function openHelp() {
             document.getElementById('helpModal').style.display = 'flex';
-            // 按当前视图自动选 device tab
-            const device = isMobileView() ? 'mobile' : 'pc';
-            switchHelpDevice(device);
+            // 默认进"关于" Tab
+            switchHelpDevice('about');
         }
         function closeHelp() {
             document.getElementById('helpModal').style.display = 'none';
