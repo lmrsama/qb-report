@@ -746,8 +746,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 K7TLWztPwOf7ijF1mqigBpfxkWYdNivvl6XUkOWKT5vxBUi3njkZj1yCpS/KWXx9OKdmm+Zt85D66RUej26xUBZzREVYTGKG58YEYjWVgSzqitIRA1gBr9lVxePBHRQ6VwyuKoLVz9BMJE0pi0hMLKj72GS0nN8d7A== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'K7TLWztPwOf7ijF1mqigBpfxkWYdNivvl6XUkOWKT5vxBUi3njkZj1yCpS/KWXx9OKdmm+Zt85D66RUej26xUBZzREVYTGKG58YEYjWVgSzqitIRA1gBr9lVxePBHRQ6VwyuKoLVz9BMJE0pi0hMLKj72GS0nN8d7A==';
+        // 部署脚本会把 UuvSTaVmmD2HSVzDmxACUbfH/FzCDnR6cYcMar8ZF945xik6jpOYdt8xzAhZsk6rK0b+wzG+v8i74PqV5hZNMjIcG39hEGL94L+iwolmIAGInItUifq+oJIUHNH2BGtZJcZtEVWuxLicPsLCKqB6y3Jw+3AMRoWf0w== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'UuvSTaVmmD2HSVzDmxACUbfH/FzCDnR6cYcMar8ZF945xik6jpOYdt8xzAhZsk6rK0b+wzG+v8i74PqV5hZNMjIcG39hEGL94L+iwolmIAGInItUifq+oJIUHNH2BGtZJcZtEVWuxLicPsLCKqB6y3Jw+3AMRoWf0w==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -3014,11 +3014,11 @@
                 stepsArea.style.width = '100%';
                 stepsArea.innerHTML = `
                     <div style="padding:8px 6px;line-height:1.8;">
-                        <h2 style="font-size:18px;margin:0 0 6px;color:#1f2937;">📐 在线方案评审工具</h2>
+                        <h2 style="font-size:18px;margin:0 0 6px;color:#1f2937;">📐 方案在线化 + AI 评审工具</h2>
                         <p style="font-size:11px;color:#999;margin:0 0 14px;">by leomrli · 基于 AI + GitHub 云端</p>
                         <p style="font-size:13px;color:#444;margin:0 0 14px;">
-                            这不是方案本身——这是一套<b>把任意方案 HTML 转成在线可评审版</b>的工具。<br>
-                            方案会变，但这套工具能复用在每一份方案上。
+                            把 Word / PPT / Markdown 形式的方案<b>转成 HTML</b>，加上评论、AI 实时修改、多视图等能力，<b>部署到云端</b>变成一个链接。<br>
+                            方案会变，但这套工具能复用在每一份方案上——任何方案都能一键在线化。
                         </p>
                         <h3 style="font-size:14px;margin:16px 0 8px;color:#1f2937;">它能做什么？</h3>
                         <ul style="font-size:12px;color:#555;padding-left:18px;margin:0 0 14px;line-height:2;">
