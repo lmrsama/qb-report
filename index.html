@@ -175,8 +175,8 @@
 </head>
 <body>
     <div class="view-switcher">
-        <button class="view-btn active" onclick="setView('pc')">PC视图</button>
-        <button class="view-btn" onclick="setView('mobile')">手机视图</button>
+        <button class="view-btn active" data-view="pc" onclick="setView('pc')">PC视图</button>
+        <button class="view-btn" data-view="mobile" onclick="setView('mobile')">手机视图</button>
     </div>
     <div class="hint-bar" id="hintBar">点击任意模块可留下评论</div>
 
@@ -372,8 +372,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 HxDIX/taFfetg6GjQwu0dMpo1CNbjSAVvfXaAjSncCHJINZErPik1WRNidUWLiX1Nt9rgpQ9vBmO6jsoRlrD1fotRSVRhOteJk4MLIOVAdM8+pT2oNGwlgtBuzRu3lhjQDvlr8/ZJndzrZV25LaVEbAQh0Y3ecM8RQ== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'HxDIX/taFfetg6GjQwu0dMpo1CNbjSAVvfXaAjSncCHJINZErPik1WRNidUWLiX1Nt9rgpQ9vBmO6jsoRlrD1fotRSVRhOteJk4MLIOVAdM8+pT2oNGwlgtBuzRu3lhjQDvlr8/ZJndzrZV25LaVEbAQh0Y3ecM8RQ==';
+        // 部署脚本会把 DvJwaoXYBZJGTtQ1JmwByPrfNA3fB7xue6pjSVVBZw12N9xeZ/VtSOeKl3qL0UY/hOpXvttC537s3y8L06X/Lnyg8PfA1YLA5WVQEaGZMyNhxE6BRVM2OfSPpMMHMYp8tmZj+//sOl/qIzFhPKoG/5NPyRdfIkqJXA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'DvJwaoXYBZJGTtQ1JmwByPrfNA3fB7xue6pjSVVBZw12N9xeZ/VtSOeKl3qL0UY/hOpXvttC537s3y8L06X/Lnyg8PfA1YLA5WVQEaGZMyNhxE6BRVM2OfSPpMMHMYp8tmZj+//sOl/qIzFhPKoG/5NPyRdfIkqJXA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -533,15 +533,34 @@
             if (n > 1) tabs[n-1].classList.add('active');
         }
 
-        function setView(v) {
+        function setView(v, fromAuto) {
             if (v === 'mobile') {
                 document.body.classList.add('mobile-view');
             } else {
                 document.body.classList.remove('mobile-view');
             }
-            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
+            document.querySelectorAll('.view-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.view === v);
+            });
+            // 用户手动切的才记忆，自动识别不写 localStorage
+            if (!fromAuto) {
+                localStorage.setItem('view_pref', v);
+            }
         }
+
+        // 启动时根据 UA + 用户偏好决定默认视图
+        (function autoDetectView() {
+            const saved = localStorage.getItem('view_pref');
+            if (saved === 'pc' || saved === 'mobile') {
+                setView(saved, true);
+                return;
+            }
+            // UA 识别 + 屏幕宽度兜底
+            const ua = navigator.userAgent || '';
+            const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|HarmonyOS/i.test(ua)
+                || (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+            setView(isMobile ? 'mobile' : 'pc', true);
+        })();
 
         async function renderBadges() {
             const comments = await loadFromCloud();
