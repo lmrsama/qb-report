@@ -124,6 +124,49 @@
         body:not(.show-comments) .commentable.has-comments .module-comment-btn { opacity: 0; color: #666; border-color: #e0e0e0; }
         body:not(.show-comments) .commentable:hover .module-comment-btn { opacity: 1; }
 
+        /* 子粒度评论目标：默认无视觉，hover才描蓝 */
+        .commentable-text, .commentable-image, .commentable-data { position: relative; cursor: pointer; transition: outline 0.12s, background 0.12s; }
+        .commentable-text:hover, .commentable-image:hover, .commentable-data:hover {
+            outline: 1.5px dashed #667eea; outline-offset: 2px;
+        }
+        /* 子元素有评论时左上角小角标 */
+        .target-flag {
+            position: absolute; top: -6px; left: -6px;
+            min-width: 14px; height: 14px; padding: 0 4px;
+            background: #667eea; color: white;
+            font-size: 9px; font-weight: 600;
+            border-radius: 7px; display: flex; align-items: center; justify-content: center;
+            z-index: 6; pointer-events: none; line-height: 1;
+        }
+        body:not(.show-comments) .target-flag { display: none; }
+
+        /* 多选态：被选元素持续高亮 */
+        .selected-target {
+            outline: 2px solid #667eea !important; outline-offset: 2px;
+            background: rgba(102,126,234,0.06) !important;
+        }
+        body.selection-mode .commentable-text:hover,
+        body.selection-mode .commentable-image:hover,
+        body.selection-mode .commentable-data:hover {
+            outline: 2px dashed #667eea; outline-offset: 2px;
+        }
+
+        /* 多选浮动工具栏 */
+        #multiSelectBar {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: white; border: 1px solid #e0e0e0; border-radius: 999px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+            padding: 8px 8px 8px 16px; z-index: 1100;
+            display: none; gap: 8px; align-items: center;
+            font-size: 12px;
+        }
+        #multiSelectBar.show { display: flex; }
+        #multiSelectBar .ms-count { color: #333; font-weight: 600; padding-right: 6px; border-right: 1px solid #eee; margin-right: 4px; }
+        #multiSelectBar button { border: none; background: #f5f5f7; color: #333; padding: 6px 12px; border-radius: 999px; font-size: 12px; cursor: pointer; }
+        #multiSelectBar button.primary { background: #667eea; color: white; }
+        #multiSelectBar button.danger { background: transparent; color: #999; padding: 6px 8px; }
+        #multiSelectBar button:hover { filter: brightness(0.95); }
+
         /* Comment panel */
         .comment-panel { position: fixed; right: 0; top: 0; width: 300px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.1); z-index: 1000; transform: translateX(100%); transition: transform 0.2s; display: flex; flex-direction: column; }
         .comment-panel.open { transform: translateX(0); }
@@ -228,6 +271,14 @@
     <!-- 顶部右上：只保留评论可见性切换 -->
     <div style="position:fixed;top:16px;right:16px;display:flex;gap:8px;z-index:999;align-items:center;">
         <button id="toggleCommentVisBtn" onclick="toggleCommentVisibility()" title="显示评论标记" style="padding:8px 10px;background:white;border:1.5px solid #e0e0e0;border-radius:6px;font-size:14px;color:#666;cursor:pointer;line-height:1;">🙈</button>
+    </div>
+
+    <!-- 多选浮动工具栏 -->
+    <div id="multiSelectBar">
+        <span class="ms-count">已选 <span id="msCount">0</span> 项</span>
+        <button class="primary" onclick="openMultiSelectPanel('comment')">💬 评论</button>
+        <button class="primary" onclick="openMultiSelectPanel('ai')">⚡ AI 修改</button>
+        <button class="danger" onclick="exitSelectionMode()" title="退出多选">✕</button>
     </div>
 
     <!-- 右下角悬浮：评论入口 -->
@@ -372,8 +423,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 DvJwaoXYBZJGTtQ1JmwByPrfNA3fB7xue6pjSVVBZw12N9xeZ/VtSOeKl3qL0UY/hOpXvttC537s3y8L06X/Lnyg8PfA1YLA5WVQEaGZMyNhxE6BRVM2OfSPpMMHMYp8tmZj+//sOl/qIzFhPKoG/5NPyRdfIkqJXA== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'DvJwaoXYBZJGTtQ1JmwByPrfNA3fB7xue6pjSVVBZw12N9xeZ/VtSOeKl3qL0UY/hOpXvttC537s3y8L06X/Lnyg8PfA1YLA5WVQEaGZMyNhxE6BRVM2OfSPpMMHMYp8tmZj+//sOl/qIzFhPKoG/5NPyRdfIkqJXA==';
+        // 部署脚本会把 jUQNEhg//nkSTrBCA/aJbFtQW2h3Ub3uNzPs9J+G9yCZ/A6Hz2gumvGvYvtfQ+5pvSgJbuJ/+KjYdx5X77ZKM8zirLrmEP4PzJY0fSCmlQn1R9/sRxMCor3CyCpVVpNO2jY4Ou0S0eoy3eQx8VZGeASzeKv077KHpQ== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'jUQNEhg//nkSTrBCA/aJbFtQW2h3Ub3uNzPs9J+G9yCZ/A6Hz2gumvGvYvtfQ+5pvSgJbuJ/+KjYdx5X77ZKM8zirLrmEP4PzJY0fSCmlQn1R9/sRxMCor3CyCpVVpNO2jY4Ou0S0eoy3eQx8VZGeASzeKv077KHpQ==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -446,19 +497,28 @@
             }
             // 切换输入框 placeholder + 发送按钮文案
             const isGlobal = currentSection === '_global';
+            const isMulti = !!currentMultiItems;
+            const isTarget = !!currentTarget;
             const ta = document.getElementById('commentInput');
             const sendBtn = document.getElementById('panelSendBtn');
             const hint = document.getElementById('commentFooterHint');
             if (tab === 'comment') {
-                if (ta) ta.placeholder = isGlobal ? '针对整个页面的反馈或整体方向' : '输入评论...';
-                if (sendBtn) { sendBtn.textContent = '发送'; sendBtn.style.background = '#667eea'; }
+                if (ta) ta.placeholder = isGlobal ? '针对整个页面的反馈或整体方向'
+                    : isMulti ? `针对选中的 ${currentMultiItems.length} 项写评论`
+                    : isTarget ? '针对该元素的评论'
+                    : '输入评论...';
+                if (sendBtn) { sendBtn.textContent = '发送'; sendBtn.style.background = '#667eea'; sendBtn.disabled = false; sendBtn.style.opacity = '1'; sendBtn.style.cursor = 'pointer'; }
                 if (hint) hint.textContent = '评论留言不修改页面';
             } else {
-                if (ta) ta.placeholder = '描述要怎么改，例如：把这里数字改成5w、删掉黄色边框';
-                if (sendBtn) { sendBtn.textContent = '⚡ 用 AI 修改'; sendBtn.style.background = '#667eea'; }
+                if (ta) ta.placeholder = isMulti ? `批量改 ${currentMultiItems.length} 项，例如："统一改成蓝色"`
+                    : '描述要怎么改，例如：把这里数字改成5w';
+                if (sendBtn) { sendBtn.textContent = isMulti ? `⚡ 批量 AI 修改 (${currentMultiItems.length})` : '⚡ 用 AI 修改'; sendBtn.style.background = '#667eea'; }
                 if (hint) hint.textContent = isGlobal
                     ? '全局评论不支持 AI 修改（没有具体DOM元素）'
+                    : isMulti
+                    ? 'AI 会按你的诉求批量改这些元素，每个元素生成一份方案'
                     : 'AI 会实时改 HTML，结果自动同步到云端，可在版本历史回滚';
+                // 全局评论 AI 禁用
                 if (sendBtn) sendBtn.disabled = isGlobal;
                 if (sendBtn) sendBtn.style.opacity = isGlobal ? '0.4' : '1';
                 if (sendBtn) sendBtn.style.cursor = isGlobal ? 'not-allowed' : 'pointer';
@@ -568,19 +628,58 @@
             const countNormal = (list) => (list || []).filter(c => {
                 return !(c.type === 'ai_executed' || c.type === 'ai_pending' || c.type === 'ai_failed');
             }).length;
-            document.querySelectorAll('.commentable').forEach(el => {
+
+            // 子元素评论计数：包括 _target_xxx 直接评论 + _multi 评论里 targets 命中本元素的
+            const targetCounts = {}; // { targetId: n }
+            for (const [k, list] of Object.entries(comments)) {
+                if (!Array.isArray(list)) continue;
+                if (k.startsWith('_target_')) {
+                    const tid = k.slice('_target_'.length);
+                    targetCounts[tid] = (targetCounts[tid] || 0) + countNormal(list);
+                } else if (k === '_multi') {
+                    list.forEach(c => {
+                        if (c.type && c.type.startsWith('ai_')) return;
+                        (c.targets || []).forEach(t => {
+                            if (t.targetId) targetCounts[t.targetId] = (targetCounts[t.targetId] || 0) + 1;
+                        });
+                    });
+                }
+            }
+
+            // 模块按钮：模块直接评论数 + 该模块下所有子元素评论数
+            document.querySelectorAll('.commentable[data-section]').forEach(el => {
                 const section = el.dataset.section;
-                const list = comments[section] || [];
-                const n = countNormal(list);
+                const moduleN = countNormal(comments[section]);
+                // 累加子元素评论
+                let childN = 0;
+                el.querySelectorAll('[data-target-id]').forEach(child => {
+                    childN += (targetCounts[child.dataset.targetId] || 0);
+                });
+                const totalN = moduleN + childN;
                 const btn = el.querySelector('.module-comment-btn');
-                if (n > 0) {
+                if (totalN > 0) {
                     el.classList.add('has-comments');
-                    if (btn) btn.textContent = `评论(${n})`;
+                    if (btn) btn.textContent = `评论(${totalN})`;
                 } else {
                     el.classList.remove('has-comments');
                     if (btn) btn.textContent = '评论';
                 }
             });
+
+            // 子元素角标
+            document.querySelectorAll('[data-target-id]').forEach(el => {
+                const tid = el.dataset.targetId;
+                const n = targetCounts[tid] || 0;
+                const old = el.querySelector(':scope > .target-flag');
+                if (old) old.remove();
+                if (n > 0) {
+                    const flag = document.createElement('div');
+                    flag.className = 'target-flag';
+                    flag.textContent = n;
+                    el.appendChild(flag);
+                }
+            });
+
             // 全局评论 FAB 红点（只统计纯评论数）
             const fab = document.getElementById('globalCommentFab');
             if (fab) {
@@ -590,13 +689,56 @@
             }
         }
 
-        async function openPanel(section) {
-            currentSection = section;
-            const isGlobal = section === '_global';
-            document.getElementById('panelTitle').textContent = isGlobal ? '评论' : (sectionNames[section] || '评论');
+        // currentSection 仅在 kind='section' 或 '_global' 时使用
+        // currentTarget = 子元素 data-target-id（kind='target' 时）
+        // currentMultiItems = 多选时的快照 [{targetId, section, label, selector}, ...]
+        let currentTarget = null;
+        let currentMultiItems = null;
+
+        // 计算当前面板的"评论存储 key"
+        // - 模块评论: sectionId
+        // - 全局: '_global'
+        // - 子元素: '_target_' + targetId
+        // - 多选: '_multi'（且评论的 targets 字段存所有选中项；FAB红点和元素角标都会查这里）
+        function currentPanelKey() {
+            if (currentMultiItems) return '_multi';
+            if (currentTarget) return '_target_' + currentTarget;
+            return currentSection;
+        }
+
+        async function openPanel(arg, initialTab) {
+            // 兼容旧调用：字符串 = sectionId
+            if (typeof arg === 'string') {
+                currentSection = arg;
+                currentTarget = null;
+                currentMultiItems = null;
+            } else if (arg && arg.kind === 'target') {
+                const el = arg.el;
+                const sectionEl = el.closest('.commentable[data-section]');
+                currentSection = sectionEl ? sectionEl.dataset.section : null;
+                currentTarget = el.dataset.targetId;
+                currentMultiItems = null;
+            } else if (arg && arg.kind === 'multi') {
+                currentSection = null;
+                currentTarget = null;
+                currentMultiItems = arg.items;
+            }
+
+            // 设置面板标题
+            const titleEl = document.getElementById('panelTitle');
+            if (currentMultiItems) {
+                titleEl.textContent = `跨元素评论 · ${currentMultiItems.length} 项`;
+            } else if (currentTarget) {
+                const el = document.querySelector(`[data-target-id="${currentTarget}"]`);
+                titleEl.textContent = el ? getTargetLabel(el) : '评论';
+            } else {
+                const isGlobal = currentSection === '_global';
+                titleEl.textContent = isGlobal ? '评论' : (sectionNames[currentSection] || '评论');
+            }
+
             document.getElementById('commentPanel').classList.add('open');
-            // 默认切到评论 Tab（每次打开重置）
-            switchPanelTab('comment');
+            // 默认切到评论 Tab，除非显式传 initialTab
+            switchPanelTab(initialTab || 'comment');
             // 静默尝试加载已缓存的密钥（不弹密码框）
             await ensureKeys();
             await renderComments();
@@ -605,11 +747,14 @@
         function closePanel() {
             document.getElementById('commentPanel').classList.remove('open');
             currentSection = null;
+            currentTarget = null;
+            currentMultiItems = null;
         }
 
         async function renderComments() {
             const comments = await loadFromCloud();
-            const allList = comments[currentSection] || [];
+            const key = currentPanelKey();
+            const allList = comments[key] || [];
             const body = document.getElementById('panelBody');
             const isBatch = document.body.classList.contains('batch-mode');
 
@@ -619,14 +764,23 @@
                 return currentTab === 'ai' ? isAIRecord : !isAIRecord;
             });
 
+            // 多选时给出选中元素的列表预览
+            let multiPreview = '';
+            if (currentMultiItems && currentMultiItems.length > 0) {
+                multiPreview = `<div style="padding:8px 10px;background:#f0f4ff;border-radius:6px;margin-bottom:10px;font-size:11px;color:#555;line-height:1.6;">
+                    <div style="font-weight:600;margin-bottom:4px;color:#333;">📌 涉及的元素（${currentMultiItems.length}）</div>
+                    ${currentMultiItems.map(t => `<div>· ${t.label.replace(/</g,'&lt;')}</div>`).join('')}
+                </div>`;
+            }
+
             if (filtered.length === 0) {
                 const emptyHint = currentTab === 'ai'
-                    ? (currentSection === '_global' ? '全局评论不支持 AI 修改' : '还没有 AI 修改记录')
+                    ? (currentSection === '_global' || currentMultiItems ? '可在此输入 AI 修改诉求' : '还没有 AI 修改记录')
                     : '暂无评论，写下你的想法';
-                body.innerHTML = `<div style="text-align:center;padding:24px;color:#999;font-size:12px;">${emptyHint}</div>`;
+                body.innerHTML = multiPreview + `<div style="text-align:center;padding:24px;color:#999;font-size:12px;">${emptyHint}</div>`;
                 return;
             }
-            body.innerHTML = filtered.map(({c, originalIdx}) => {
+            body.innerHTML = multiPreview + filtered.map(({c, originalIdx}) => {
                 const i = originalIdx;
                 const isAI = c.type === 'ai_executed';
                 const isPending = c.type === 'ai_pending';
@@ -644,6 +798,11 @@
                     extraBtn = `<button onclick="retryComment(${i})" style="margin-top:4px;font-size:10px;padding:2px 8px;background:transparent;color:#667eea;border:1px solid #667eea;border-radius:3px;cursor:pointer;">重试</button>`;
                 }
 
+                // 评论的 targets 标签（如果有）
+                const targetTags = (c.targets && c.targets.length > 0)
+                    ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">${c.targets.map(t => `<span style="font-size:9px;padding:2px 6px;background:white;border:1px solid #d0d4ea;color:#667eea;border-radius:3px;">${(t.label || '元素').replace(/</g,'&lt;')}</span>`).join('')}</div>`
+                    : '';
+
                 const checkbox = isBatch ? `<input type="checkbox" class="batch-cb" data-idx="${i}" onchange="updateBatchCount()" style="margin-right:8px;cursor:pointer;vertical-align:middle;">` : '';
                 const deleteBtn = isBatch ? '' : `<button style="position:absolute;right:8px;top:8px;font-size:10px;color:#ccc;cursor:pointer;border:none;background:none;" onclick="deleteComment(${i})">删除</button>`;
 
@@ -654,6 +813,7 @@
                         ${deleteBtn}
                         <div style="font-size:9px;color:#999;margin-bottom:3px;">${c.author || '匿名'} · ${c.time}${badge}</div>
                         <div style="font-size:12px;color:#333;line-height:1.5;">${c.text.replace(/</g,'&lt;')}</div>
+                        ${targetTags}
                         ${c.aiResponse ? `<div style="margin-top:6px;padding:6px 8px;background:white;border-radius:4px;font-size:11px;color:#666;border-left:2px solid #667eea;">${c.aiResponse.replace(/</g,'&lt;')}</div>` : ''}
                         ${extraBtn}
                     </div>
@@ -663,8 +823,9 @@
         }
 
         async function retryComment(idx) {
+            const key = currentPanelKey();
             const comments = await loadFromCloud();
-            const c = comments[currentSection][idx];
+            const c = comments[key][idx];
             if (!c) return;
             const text = c.text;
             const author = c.author;
@@ -676,21 +837,34 @@
             setBtnState(true);
 
             try {
-                const result = await callAIToModify(text, currentSection);
-                const sectionEl = document.querySelector(`[data-section="${currentSection}"]`);
-                applyAIResult(result, sectionEl);
+                let result;
+                if (currentMultiItems && currentMultiItems.length > 0) {
+                    result = await callAIToModifyMulti(text, currentMultiItems);
+                    applyAIResultMulti(result);
+                } else if (currentTarget) {
+                    const targetEl = document.querySelector(`[data-target-id="${currentTarget}"]`);
+                    if (!targetEl) throw new Error('找不到目标元素');
+                    result = await callAIToModifyTarget(text, targetEl);
+                    applyAIResult(result, targetEl);
+                } else {
+                    result = await callAIToModify(text, currentSection);
+                    const sectionEl = document.querySelector(`[data-section="${currentSection}"]`);
+                    applyAIResult(result, sectionEl);
+                }
                 const versionNum = await saveVersion(text, author, currentSection);
                 const c2 = await loadFromCloud();
-                c2[currentSection][idx].type = 'ai_executed';
-                c2[currentSection][idx].version = versionNum;
-                c2[currentSection][idx].aiResponse = `${result.summary || '已修改'}（重试成功）`;
+                c2[key][idx].type = 'ai_executed';
+                c2[key][idx].version = versionNum;
+                c2[key][idx].aiResponse = `${(result && result.summary) || '已修改'}（重试成功）`;
                 await saveToCloud(c2);
             } catch (e) {
                 console.error('重试失败:', e);
                 const c2 = await loadFromCloud();
-                c2[currentSection][idx].type = 'ai_failed';
-                c2[currentSection][idx].aiResponse = '重试失败：' + e.message;
-                await saveToCloud(c2);
+                if (c2[key] && c2[key][idx]) {
+                    c2[key][idx].type = 'ai_failed';
+                    c2[key][idx].aiResponse = '重试失败：' + e.message;
+                    await saveToCloud(c2);
+                }
                 alert('重试失败：' + e.message);
             } finally {
                 setBtnState(false);
@@ -702,7 +876,9 @@
         async function addComment(useAI) {
             const input = document.getElementById('commentInput');
             const text = input.value.trim();
-            if (!text || !currentSection) return;
+            if (!text) return;
+            // 必须有上下文：模块/全局/子元素/多选 之一
+            if (!currentSection && !currentTarget && !currentMultiItems) return;
 
             // 评论 = 静默尝试解锁（已缓存才走云端，没缓存就本地存，不弹密码）
             // AI 修改 = 必须解锁（强制弹密码，AI 需要 aiKey）
@@ -734,14 +910,33 @@
 
             setBtnState(true);
 
+            // 计算评论存储 key + targets 字段
+            const key = currentPanelKey();
+            // targets 字段：单元素/多选/模块/全局 都统一带上
+            let targetsField = [];
+            if (currentMultiItems && currentMultiItems.length > 0) {
+                targetsField = currentMultiItems.map(t => ({
+                    section: t.section, targetId: t.targetId, label: t.label, selector: t.selector
+                }));
+            } else if (currentTarget) {
+                const el = document.querySelector(`[data-target-id="${currentTarget}"]`);
+                targetsField = [{
+                    section: currentSection, targetId: currentTarget,
+                    label: el ? getTargetLabel(el) : '元素',
+                    selector: `[data-target-id="${currentTarget}"]`
+                }];
+            }
+            // 模块/全局评论：targetsField=[]，靠 key=section/_global 来定位
+
             try {
                 const comments = await loadFromCloud();
-                if (!comments[currentSection]) comments[currentSection] = [];
-                const commentIdx = comments[currentSection].length;
-                comments[currentSection].push({
+                if (!comments[key]) comments[key] = [];
+                const commentIdx = comments[key].length;
+                comments[key].push({
                     text, author,
                     time: new Date().toLocaleString('zh-CN'),
-                    type: useAI ? 'ai_pending' : 'normal'
+                    type: useAI ? 'ai_pending' : 'normal',
+                    targets: targetsField
                 });
                 await saveToCloud(comments);
                 input.value = '';
@@ -750,25 +945,38 @@
 
                 if (useAI) {
                     try {
-                        // 关键：AI修改前先存"修改前"快照（如果是第一次或上次的不是修改前的）
-                        await saveVersionIfNeeded('修改前自动备份', author, currentSection, true);
+                        // 关键：AI修改前先存"修改前"快照
+                        const sectionForBackup = currentSection || (targetsField[0] && targetsField[0].section) || null;
+                        await saveVersionIfNeeded('修改前自动备份', author, sectionForBackup, true);
 
-                        const result = await callAIToModify(text, currentSection);
-                        const sectionEl = document.querySelector(`[data-section="${currentSection}"]`);
-                        applyAIResult(result, sectionEl);
+                        // 多选：批量调AI；单元素/模块：单次调AI
+                        let result;
+                        if (currentMultiItems && currentMultiItems.length > 0) {
+                            result = await callAIToModifyMulti(text, currentMultiItems);
+                            applyAIResultMulti(result);
+                        } else if (currentTarget) {
+                            const targetEl = document.querySelector(`[data-target-id="${currentTarget}"]`);
+                            if (!targetEl) throw new Error('找不到目标元素');
+                            result = await callAIToModifyTarget(text, targetEl);
+                            applyAIResult(result, targetEl);
+                        } else {
+                            result = await callAIToModify(text, currentSection);
+                            const sectionEl = document.querySelector(`[data-section="${currentSection}"]`);
+                            applyAIResult(result, sectionEl);
+                        }
 
-                        const versionNum = await saveVersion(text, author, currentSection);
+                        const versionNum = await saveVersion(text, author, sectionForBackup);
                         const c2 = await loadFromCloud();
-                        c2[currentSection][commentIdx].type = 'ai_executed';
-                        c2[currentSection][commentIdx].version = versionNum;
-                        c2[currentSection][commentIdx].aiResponse = `${result.summary || '已修改'}（可在版本历史中回滚）`;
+                        c2[key][commentIdx].type = 'ai_executed';
+                        c2[key][commentIdx].version = versionNum;
+                        c2[key][commentIdx].aiResponse = `${(result && result.summary) || '已修改'}（可在版本历史中回滚）`;
                         await saveToCloud(c2);
                     } catch (e) {
                         console.error('AI修改失败:', e);
                         const c2 = await loadFromCloud();
-                        if (c2[currentSection] && c2[currentSection][commentIdx]) {
-                            c2[currentSection][commentIdx].type = 'ai_failed';
-                            c2[currentSection][commentIdx].aiResponse = '执行失败：' + e.message;
+                        if (c2[key] && c2[key][commentIdx]) {
+                            c2[key][commentIdx].type = 'ai_failed';
+                            c2[key][commentIdx].aiResponse = '执行失败：' + e.message;
                             await saveToCloud(c2);
                         }
                         alert('AI执行失败：' + e.message);
@@ -780,6 +988,11 @@
                     await renderComments();
                     await renderBadges();
                 } catch(e) { console.warn('刷新失败', e); }
+                // 多选评论发送成功后退出多选态
+                if (currentMultiItems) {
+                    currentMultiItems = null;
+                    exitSelectionMode();
+                }
             }
         }
 
@@ -835,60 +1048,23 @@
             }
         }
 
-        async function callAIToModify(userPrompt, sectionId) {
-            const sectionEl = document.querySelector(`[data-section="${sectionId}"]`);
-            if (!sectionEl) throw new Error('找不到模块');
+        // 公共：剥离运行时class和动态注入元素
+        function stripRuntimeForAI(root) {
+            const runtimeClasses = ['has-comments', 'has-edit-notes', 'open', 'active', 'selected-target'];
+            root.querySelectorAll('*').forEach(n => {
+                runtimeClasses.forEach(c => n.classList.remove(c));
+            });
+            runtimeClasses.forEach(c => root.classList.remove(c));
+            root.querySelectorAll('.comment-badge, .edit-note-badge, .module-comment-btn, .target-flag').forEach(n => n.remove());
+        }
 
-            // 截取section的HTML，限制长度。先克隆并剥离运行时类，避免AI生成不稳定选择器
-            const cloned = sectionEl.cloneNode(true);
-            const stripRuntimeClasses = (root) => {
-                const runtimeClasses = ['has-comments', 'has-edit-notes', 'open', 'active'];
-                root.querySelectorAll('*').forEach(n => {
-                    runtimeClasses.forEach(c => n.classList.remove(c));
-                });
-                runtimeClasses.forEach(c => root.classList.remove(c));
-                // 移除评论badge和模块评论按钮等动态注入的元素
-                root.querySelectorAll('.comment-badge, .edit-note-badge, .module-comment-btn').forEach(n => n.remove());
-            };
-            stripRuntimeClasses(cloned);
-            let html = cloned.outerHTML;
-            if (html.length > 6000) html = html.substring(0, 6000) + '...';
-
-            const systemPrompt = `你是HTML修改助手。用户给你一段HTML和修改诉求，返回严格的JSON（不要markdown代码块），格式：
-{
-  "action": "replace_text" | "replace_html" | "remove" | "insert_before" | "insert_after" | "set_attr",
-  "target_selector": "精确CSS选择器",
-  "new_text": "纯文本（action=replace_text）",
-  "new_html": "新HTML片段（action=replace_html / insert_before / insert_after）",
-  "attr_name": "属性名（action=set_attr）",
-  "attr_value": "属性值（action=set_attr，设为空字符串删除属性）",
-  "summary": "一句话中文说明（10-20字）"
-}
-
-action说明：
-- replace_text：只改文本内容（推荐）
-- replace_html：替换HTML，但要把原有非目标元素也保留下来，不要遗漏其他兄弟元素
-- remove：删除目标元素（用于去掉某个标签/边框/UI块）
-- insert_before/insert_after：在目标元素前/后插入HTML
-- set_attr：修改元素属性（如style、class），attr_value为空则删除属性
-
-规则：
-1. CSS选择器要稳定。**不要使用运行时class（has-comments / has-edit-notes / open / active 等动态状态类）**，优先用语义类（如 .badge / .settle-card）或属性选择器（如 [data-section]）
-2. 选择器在传入的"当前模块HTML"范围内查找。如果要操作的是模块根节点本身，可以直接用根节点的标签或属性选择器（例如 div[data-section="settlement"]）
-3. 改样式（颜色/边框/背景）优先用 set_attr 改 style 或 class
-4. 用户说"删掉/去掉/不要XX" → 用 remove 删除目标。**绝不能删除整个 commentable 模块根节点**（即整个传入的HTML外层div），如果用户的诉求是"删掉外层框"，那其实是要删除根节点内部的某个边框样式或子元素，请改用 set_attr 修改 style/class
-5. 不要返回JSON以外的内容
-6. summary 用中文，10-20字`;
-
-            const userMessage = `当前模块HTML：\n\`\`\`html\n${html}\n\`\`\`\n\n用户诉求：${userPrompt}\n\n请返回JSON。`;
-
+        // 公共：调用 Deepseek 单次请求
+        async function callDeepseek(systemPrompt, userMessage) {
             const k = await ensureKeys();
             if (!k) throw new Error('未解锁，无法调用AI');
-
             console.log('[AI] 开始调用 Deepseek...');
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
-
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
             let res;
             try {
                 res = await fetch(AI_ENDPOINT, {
@@ -914,26 +1090,131 @@ action说明：
             } finally {
                 clearTimeout(timeoutId);
             }
-
             console.log('[AI] HTTP状态:', res.status);
             if (!res.ok) {
                 const txt = await res.text().catch(() => '');
                 throw new Error('AI API失败 ' + res.status + ': ' + txt.substring(0, 200));
             }
-
             const data = await res.json();
-            console.log('[AI] 完整响应:', data);
             let content = data.choices[0].message.content.trim();
-            console.log('[AI] 模型返回内容:', content);
-
-            // 容错：去掉可能的markdown包裹
             content = content.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-
             try {
                 return JSON.parse(content);
             } catch (e) {
                 throw new Error('AI返回非JSON：' + content.substring(0, 100));
             }
+        }
+
+        async function callAIToModify(userPrompt, sectionId) {
+            const sectionEl = document.querySelector(`[data-section="${sectionId}"]`);
+            if (!sectionEl) throw new Error('找不到模块');
+            const cloned = sectionEl.cloneNode(true);
+            stripRuntimeForAI(cloned);
+            let html = cloned.outerHTML;
+            if (html.length > 6000) html = html.substring(0, 6000) + '...';
+
+            const systemPrompt = `你是HTML修改助手。用户给你一段HTML和修改诉求，返回严格的JSON（不要markdown代码块），格式：
+{
+  "action": "replace_text" | "replace_html" | "remove" | "insert_before" | "insert_after" | "set_attr",
+  "target_selector": "精确CSS选择器",
+  "new_text": "纯文本（action=replace_text）",
+  "new_html": "新HTML片段（action=replace_html / insert_before / insert_after）",
+  "attr_name": "属性名（action=set_attr）",
+  "attr_value": "属性值（action=set_attr，设为空字符串删除属性）",
+  "summary": "一句话中文说明（10-20字）"
+}
+
+规则：
+1. CSS选择器要稳定。**不要使用运行时class（has-comments / open / active / selected-target 等动态状态类）**，优先用语义类或属性选择器（如 [data-section] 、[data-target-id]）
+2. 选择器在传入的"当前模块HTML"范围内查找。如果要操作的是模块根节点本身，可以直接用根节点的标签或属性选择器（例如 div[data-section="settlement"]）
+3. 改样式（颜色/边框/背景）优先用 set_attr 改 style 或 class
+4. 用户说"删掉/去掉/不要XX" → 用 remove 删除目标。**绝不能删除整个 commentable 模块根节点**
+5. 不要返回JSON以外的内容
+6. summary 用中文，10-20字`;
+
+            const userMessage = `当前模块HTML：\n\`\`\`html\n${html}\n\`\`\`\n\n用户诉求：${userPrompt}\n\n请返回JSON。`;
+            return await callDeepseek(systemPrompt, userMessage);
+        }
+
+        // 单子元素 AI 修改
+        async function callAIToModifyTarget(userPrompt, targetEl) {
+            const cloned = targetEl.cloneNode(true);
+            stripRuntimeForAI(cloned);
+            let html = cloned.outerHTML;
+            if (html.length > 4000) html = html.substring(0, 4000) + '...';
+            const systemPrompt = `你是HTML修改助手。用户选中了一个具体子元素（例如一段文字/一张图/一个数据），返回严格的 JSON（不要 markdown）：
+{
+  "action": "replace_text" | "replace_html" | "remove" | "set_attr",
+  "target_selector": "[data-target-id=\\"...\\"]" 或更精确的 CSS 选择器,
+  "new_text": "...", "new_html": "...", "attr_name": "...", "attr_value": "...",
+  "summary": "一句话中文说明"
+}
+规则：
+- 优先 replace_text 或 set_attr，少用 replace_html
+- target_selector 必须能在传入的元素HTML里命中，**最稳的是用 [data-target-id="该元素的id"]**
+- 不要使用运行时类（has-comments/open/active/selected-target）
+- summary 中文 10-20 字`;
+            const userMessage = `当前元素HTML：\n\`\`\`html\n${html}\n\`\`\`\n\n用户诉求：${userPrompt}\n\n请返回JSON。`;
+            return await callDeepseek(systemPrompt, userMessage);
+        }
+
+        // 多元素批量 AI 修改：返回 [{target_id, action, ...}, ...]
+        async function callAIToModifyMulti(userPrompt, items) {
+            // 限制最多 6 个，防止 prompt 过长
+            const lim = items.slice(0, 6);
+            const blocks = lim.map((t, idx) => {
+                const el = document.querySelector(`[data-target-id="${t.targetId}"]`);
+                if (!el) return null;
+                const cloned = el.cloneNode(true);
+                stripRuntimeForAI(cloned);
+                let html = cloned.outerHTML;
+                if (html.length > 1500) html = html.substring(0, 1500) + '...';
+                return `### 元素 ${idx+1}（target_id="${t.targetId}"，类型=${el.classList.contains('commentable-image') ? 'image' : el.classList.contains('commentable-data') ? 'data' : 'text'}）\n\`\`\`html\n${html}\n\`\`\``;
+            }).filter(Boolean).join('\n\n');
+
+            const systemPrompt = `你是HTML批量修改助手。用户对多个元素同时提一个诉求，你需要为每个元素返回一个修改方案。返回严格的 JSON 数组（不要 markdown）：
+[
+  {
+    "target_id": "元素的data-target-id",
+    "action": "replace_text" | "set_attr" | "remove" | "replace_html",
+    "target_selector": "[data-target-id=\\"...\\"]" 或更精确，
+    "new_text": "...", "new_html": "...", "attr_name": "...", "attr_value": "...",
+    "summary": "一句话说明对该元素做了什么"
+  },
+  ...
+]
+规则：
+- 数组长度等于传入元素个数（每个都要返回方案，即使只是 set_attr 改 style）
+- target_id 字段必须填，且严格等于上下文里的 data-target-id
+- target_selector 一般填 \`[data-target-id="..."]\` 即可
+- 不要使用运行时类
+- 不要返回数组以外的内容（直接以 [ 开头，以 ] 结尾）`;
+            const userMessage = `共 ${lim.length} 个元素：\n\n${blocks}\n\n用户诉求：${userPrompt}\n\n请返回 JSON 数组。`;
+            const result = await callDeepseek(systemPrompt, userMessage);
+            if (!Array.isArray(result)) throw new Error('AI 多选返回非数组');
+            return result;
+        }
+
+        // 批量应用 AI 多选结果
+        function applyAIResultMulti(results) {
+            let summaries = [];
+            let errors = [];
+            results.forEach(r => {
+                try {
+                    const tid = r.target_id;
+                    if (!tid) throw new Error('缺少 target_id');
+                    const el = document.querySelector(`[data-target-id="${tid}"]`);
+                    if (!el) throw new Error(`找不到 target_id=${tid}`);
+                    applyAIResult(r, el);
+                    if (r.summary) summaries.push(r.summary);
+                } catch(e) {
+                    errors.push(e.message);
+                }
+            });
+            return {
+                summary: summaries.length > 0 ? summaries.join(' / ') : '已批量修改',
+                errors
+            };
         }
 
         async function loadVersions() {
@@ -1022,7 +1303,9 @@ action说明：
             newContainer.innerHTML = target.snapshot;
             const oldContainer = document.querySelector('.container');
             oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
-            // 重新注入模块评论按钮
+            // 重新注入模块评论按钮 + 子粒度标记
+            assignTargetIds();
+            bindTargetClicks();
             injectModuleCommentBtns();
             closeVersions();
             await renderBadges();
@@ -1035,8 +1318,8 @@ action说明：
 
         async function deleteComment(i) {
             const comments = await loadFromCloud();
-            if (comments[currentSection]) {
-                comments[currentSection].splice(i, 1);
+            if (comments[currentPanelKey()]) {
+                comments[currentPanelKey()].splice(i, 1);
                 await saveToCloud(comments);
                 await renderComments();
                 await renderBadges();
@@ -1088,6 +1371,159 @@ action说明：
                 el.appendChild(btn);
             });
         }
+
+        // ========= 子粒度评论：自动标记 + 多选 =========
+        // 子粒度元素的"种子"选择器（按父section分组）。这些选择器内的元素将被标记为可独立评论。
+        // 设计：text=文案/标题/段落；image=图片；data=数字/标签/数据点
+        const TARGET_SELECTORS = {
+            text: [
+                '.container > h1', '.container > .subtitle',
+                '.flow-node .node-title', '.flow-node .node-desc',
+                '.screenshot-item .caption',
+                '.activity-demo .demo-header span',
+                '.activity-demo .act-hero .brand', '.activity-demo .act-hero .title', '.activity-demo .act-hero .sub', '.activity-demo .act-hero .countdown',
+                '.activity-demo .stage-tab .tab-label',
+                '.activity-demo .stage-content .stage-desc',
+                '.activity-demo .stage-content .task-item .task-name',
+                '.activity-demo .stage-content .task-item .task-desc-mini',
+                '.activity-demo .locked-state .lock-text',
+                '.ref-box .ref-label',
+                '.settle-card .settle-title',
+                '.settle-card .settle-row .text',
+                '.settle-card .settle-total .main', '.settle-card .settle-total .sub',
+                '.detail-section h3',
+                '.detail-table th', '.detail-table td',
+                '.placeholder-note'
+            ],
+            image: [
+                '.screenshot-item img',
+                '.activity-demo',
+                '.ref-box img'
+            ],
+            data: [
+                '.flow-node .zone-tag',
+                '.flow-node .node-volume',
+                '.activity-demo .stage-tab .tab-num',
+                '.activity-demo .stage-tab .tab-reward',
+                '.activity-demo .task-btn',
+                '.settle-card .badge'
+            ]
+        };
+
+        // 为每个匹配的子元素分配稳定 data-target-id
+        function assignTargetIds() {
+            const counter = {}; // { 'qb-exposure-text': 0, ... }
+            for (const [type, selectors] of Object.entries(TARGET_SELECTORS)) {
+                selectors.forEach(sel => {
+                    document.querySelectorAll(sel).forEach(el => {
+                        if (el.dataset.targetId) return; // 防重
+                        const sectionEl = el.closest('.commentable[data-section]');
+                        const section = sectionEl ? sectionEl.dataset.section : '_root';
+                        const key = `${section}-${type}`;
+                        counter[key] = (counter[key] || 0) + 1;
+                        const tid = `${key}-${counter[key]}`;
+                        el.dataset.targetId = tid;
+                        el.classList.add('commentable-' + type);
+                    });
+                });
+            }
+        }
+
+        // 生成元素的简短描述（评论列表里展示用）
+        function getTargetLabel(el) {
+            if (!el) return '元素';
+            if (el.classList.contains('commentable-image')) return '🖼️ 图片';
+            const txt = (el.textContent || '').trim().replace(/\s+/g, ' ');
+            const short = txt.length > 14 ? txt.slice(0, 14) + '…' : txt;
+            const prefix = el.classList.contains('commentable-data') ? '🔢 ' : '📝 ';
+            return prefix + (short || '元素');
+        }
+
+        // ========= 多选状态管理 =========
+        let selectedTargets = []; // [{ targetId, section, label, selector }]
+
+        function isInSelectionMode() { return selectedTargets.length > 0; }
+
+        function getStableSelector(el) {
+            // data-target-id 是我们自己生成的稳定锚点，优先用它
+            return `[data-target-id="${el.dataset.targetId}"]`;
+        }
+
+        function toggleTargetSelection(el) {
+            const tid = el.dataset.targetId;
+            const idx = selectedTargets.findIndex(t => t.targetId === tid);
+            if (idx >= 0) {
+                selectedTargets.splice(idx, 1);
+                el.classList.remove('selected-target');
+            } else {
+                const sectionEl = el.closest('.commentable[data-section]');
+                selectedTargets.push({
+                    targetId: tid,
+                    section: sectionEl ? sectionEl.dataset.section : null,
+                    label: getTargetLabel(el),
+                    selector: getStableSelector(el)
+                });
+                el.classList.add('selected-target');
+            }
+            updateMultiSelectBar();
+        }
+
+        function updateMultiSelectBar() {
+            const bar = document.getElementById('multiSelectBar');
+            const count = document.getElementById('msCount');
+            if (selectedTargets.length > 0) {
+                bar.classList.add('show');
+                if (count) count.textContent = selectedTargets.length;
+                document.body.classList.add('selection-mode');
+            } else {
+                bar.classList.remove('show');
+                document.body.classList.remove('selection-mode');
+            }
+        }
+
+        function exitSelectionMode() {
+            document.querySelectorAll('.selected-target').forEach(el => el.classList.remove('selected-target'));
+            selectedTargets = [];
+            updateMultiSelectBar();
+        }
+
+        // 子元素点击：⌘/Ctrl 加入选区，单击直接打开该元素的评论面板
+        function bindTargetClicks() {
+            document.querySelectorAll('.commentable-text, .commentable-image, .commentable-data').forEach(el => {
+                if (el.dataset.targetBound) return;
+                el.dataset.targetBound = '1';
+                el.addEventListener('click', (e) => {
+                    // 让模块按钮的点击不触发子元素逻辑
+                    if (e.target.closest('.module-comment-btn')) return;
+                    if (e.metaKey || e.ctrlKey || isInSelectionMode()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleTargetSelection(el);
+                        return;
+                    }
+                    // 单击：直接打开该子元素的评论面板
+                    e.stopPropagation();
+                    openPanel({ kind: 'target', el });
+                });
+            });
+        }
+
+        function openMultiSelectPanel(initialTab) {
+            if (selectedTargets.length === 0) return;
+            // 用一份不可变快照传给面板
+            openPanel({ kind: 'multi', items: selectedTargets.slice() }, initialTab);
+        }
+
+        // ESC 退出多选
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isInSelectionMode()) {
+                exitSelectionMode();
+            }
+        });
+
+        // 启动时执行
+        assignTargetIds();
+        bindTargetClicks();
         injectModuleCommentBtns();
 
         // 输入框不监听回车，避免误触（兼容中英文输入法换行/确认）
@@ -1118,7 +1554,9 @@ action说明：
                         const oldContainer = document.querySelector('.container');
                         if (oldContainer && newContainer.firstElementChild) {
                             oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
-                            // 重新注入模块评论按钮
+                            // 重新注入模块评论按钮 + 子粒度标记
+                            assignTargetIds();
+                            bindTargetClicks();
                             injectModuleCommentBtns();
                             await renderBadges();
                             console.log(`[restore] 已恢复到云端 v${latest.v}（${latest.author} · ${latest.time}）`);
@@ -1154,36 +1592,55 @@ action说明：
         // ========= 一键导出全部评论（云端Gist里的所有评论 → Markdown） =========
         async function exportAllComments() {
             const all = await loadFromCloud();
-            const sections = Object.keys(all || {}).filter(k => Array.isArray(all[k]) && all[k].length > 0);
-            if (sections.length === 0) { alert('暂无评论可导出'); return; }
+            const keys = Object.keys(all || {}).filter(k => Array.isArray(all[k]) && all[k].length > 0);
+            if (keys.length === 0) { alert('暂无评论可导出'); return; }
 
             let out = '# HTML汇报 - 评论导出\n\n';
             out += `导出时间：${new Date().toLocaleString('zh-CN')}\n`;
             out += `在线地址：${location.href}\n\n---\n\n`;
 
-            // 先输出全局评论
+            const formatItem = (c, i) => {
+                let s = `${i+1}. **${c.author || '匿名'}** _(${c.time})_`;
+                if (c.type === 'ai_executed') s += ' · ⚡AI已执行';
+                if (c.type === 'ai_failed') s += ' · ❌AI失败';
+                if (c.targets && c.targets.length > 0) {
+                    s += '\n   涉及：' + c.targets.map(t => t.label || '元素').join(' / ');
+                }
+                s += `\n   ${c.text}\n`;
+                if (c.aiResponse) s += `   > AI响应：${c.aiResponse}\n`;
+                s += '\n';
+                return s;
+            };
+
+            // 全局评论
             if (all._global && all._global.length > 0) {
                 out += `## 🌐 全局评论\n\n`;
-                all._global.forEach((c, i) => {
-                    out += `${i+1}. **${c.author || '匿名'}** _(${c.time})_${c.useAI ? ' · AI已执行' : ''}\n   ${c.text}\n`;
-                    if (c.aiResponse) out += `   > AI响应：${c.aiResponse}\n`;
-                    out += `\n`;
-                });
+                all._global.forEach((c, i) => out += formatItem(c, i));
                 out += `---\n\n`;
             }
 
-            // 各模块
-            out += `## 📍 各模块评论\n\n`;
-            for (const s of sections) {
-                if (s === '_global') continue;
-                const list = all[s];
-                const name = sectionNames[s] || s;
-                out += `### 【${name}】 (section=${s})\n\n`;
-                list.forEach((c, i) => {
-                    out += `${i+1}. **${c.author || '匿名'}** _(${c.time})_${c.useAI ? ' · AI已执行' : ''}\n   ${c.text}\n`;
-                    if (c.aiResponse) out += `   > AI响应：${c.aiResponse}\n`;
-                    out += `\n`;
-                });
+            // 跨元素评论
+            if (all._multi && all._multi.length > 0) {
+                out += `## 🔗 跨元素评论\n\n`;
+                all._multi.forEach((c, i) => out += formatItem(c, i));
+                out += `---\n\n`;
+            }
+
+            // 各模块（含子元素）
+            out += `## 📍 模块/子元素评论\n\n`;
+            for (const k of keys) {
+                if (k === '_global' || k === '_multi') continue;
+                const list = all[k];
+                let title;
+                if (k.startsWith('_target_')) {
+                    const tid = k.slice('_target_'.length);
+                    const el = document.querySelector(`[data-target-id="${tid}"]`);
+                    title = `子元素 · ${el ? getTargetLabel(el) : tid} (${tid})`;
+                } else {
+                    title = `${sectionNames[k] || k} (section=${k})`;
+                }
+                out += `### 【${title}】\n\n`;
+                list.forEach((c, i) => out += formatItem(c, i));
             }
 
             const blob = new Blob([out], { type: 'text/markdown;charset=utf-8' });
@@ -1244,7 +1701,7 @@ action说明：
             const indices = getSelectedIndices();
             if (indices.length === 0) { alert('未选中任何评论'); return; }
             const comments = await loadFromCloud();
-            const list = comments[currentSection] || [];
+            const list = comments[currentPanelKey()] || [];
             const sectionName = sectionNames[currentSection] || currentSection;
 
             let out = `# 评论导出 - ${sectionName}\n\n`;
@@ -1275,7 +1732,7 @@ action说明：
             if (!confirm(`确定删除选中的 ${indices.length} 条评论？此操作会同步到云端`)) return;
             const comments = await loadFromCloud();
             // 倒序删除避免索引错位
-            indices.sort((a,b) => b - a).forEach(i => comments[currentSection].splice(i, 1));
+            indices.sort((a,b) => b - a).forEach(i => comments[currentPanelKey()].splice(i, 1));
             await saveToCloud(comments);
             await renderComments();
             await renderBadges();
