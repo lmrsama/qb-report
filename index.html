@@ -394,8 +394,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 fhasoxi8Kw4feN5Db3Ay9IYlay+9KyAz51gKwn7J3XbGW1sMh/JVZO0grddeis9CAY/twtK6a6ebrrJ6b1jPh2zWQPVZiFVjA2015YAe745uHqcH3g/U0byktBd/rrXJSHnYDIkapEHVoJUnEc2DCm84D6aoKozi1w== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'fhasoxi8Kw4feN5Db3Ay9IYlay+9KyAz51gKwn7J3XbGW1sMh/JVZO0grddeis9CAY/twtK6a6ebrrJ6b1jPh2zWQPVZiFVjA2015YAe745uHqcH3g/U0byktBd/rrXJSHnYDIkapEHVoJUnEc2DCm84D6aoKozi1w==';
+        // 部署脚本会把 XxeUIJmCJunZ2euTeHg0CgGgk2cV/S9FxtKT6w93F/cds7OdAL9V3zn5vMykGZO9eyW77u5SKENnxktmHM1YgQkmKW3EnuyJ3EfMlRX9xo2zd4KvJyEE3ZToO46Nlf0I35BZKTr9UKFKHG6khK7pHEYEnqeKM8jkaA== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'XxeUIJmCJunZ2euTeHg0CgGgk2cV/S9FxtKT6w93F/cds7OdAL9V3zn5vMykGZO9eyW77u5SKENnxktmHM1YgQkmKW3EnuyJ3EfMlRX9xo2zd4KvJyEE3ZToO46Nlf0I35BZKTr9UKFKHG6khK7pHEYEnqeKM8jkaA==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1520,6 +1520,7 @@
 
         function toggleTargetSelection(el) {
             const tid = el.dataset.targetId;
+            console.log('[v2.8.4] toggleTargetSelection', tid, el);
             const idx = selectedTargets.findIndex(t => t.targetId === tid);
             if (idx >= 0) {
                 selectedTargets.splice(idx, 1);
@@ -1534,7 +1535,8 @@
                 });
                 el.classList.add('selected-target');
             }
-            // 选中后自动打开/刷新评论面板（multi 单元素都走 multi scope，统一交互）
+            console.log('[v2.8.4] selectedTargets after toggle:', selectedTargets.length);
+            // 选中后自动打开/刷新评论面板
             syncSelectionToPanel();
         }
 
@@ -1572,45 +1574,37 @@
             syncSelectionToPanel();
         }
 
-        // 子元素点击：⌘/Ctrl 加入选区。用 capture 阶段抢在 inline onclick 之前
+        // 子元素点击：v2.8.4 全部统一到 document 级别 capture，避免多层冲突
         function bindTargetClicks() {
-            document.querySelectorAll('.commentable-text, .commentable-image, .commentable-data').forEach(el => {
-                if (el.dataset.targetBound) return;
-                el.dataset.targetBound = '1';
-                el.addEventListener('click', (e) => {
-                    if (e.metaKey || e.ctrlKey || isInSelectionMode()) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        toggleTargetSelection(el);
-                    }
-                }, true);
-                el.addEventListener('mousedown', (e) => {
-                    if (e.metaKey || e.ctrlKey || isInSelectionMode()) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                }, true);
-            });
+            // 已废弃：每个元素单独绑定。现在统一在 document 级别处理。
         }
 
-        // ========= 全局兜底：⌘+点击任何地方都能命中 =========
-        // 在 document 级别 capture 阶段处理：如果点中的不是子元素但在 commentable 模块内，把模块当作 target 选中
+        // ========= 统一的 ⌘+click 入口（document 级 capture） =========
+        // 优先级：UI 控件（直接放过） > 子元素（commentable-*） > 模块（commentable[data-section]）
         document.addEventListener('click', (e) => {
-            if (!(e.metaKey || e.ctrlKey)) return;
-            // 已经被 bindTargetClicks 处理过？(子元素 capture 阶段会先触发并 stopPropagation，到这里就不会到了)
-            if (e.target.closest('.commentable-text, .commentable-image, .commentable-data')) return;
+            // 没按 ⌘/Ctrl 也不在选中态：放过（纯阅读）
+            if (!(e.metaKey || e.ctrlKey) && !isInSelectionMode()) return;
             // UI 控件不处理
-            if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn, .view-switcher')) return;
-            // 找最近的 commentable 模块
-            const moduleEl = e.target.closest('.commentable[data-section]');
-            if (!moduleEl) return;
-            // 给模块也分配一个临时 target-id（如果没分配的话）：mod-<section>
-            if (!moduleEl.dataset.targetId) {
-                moduleEl.dataset.targetId = 'mod-' + moduleEl.dataset.section;
+            if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn, .view-switcher, #marqueeBox')) return;
+
+            // 优先匹配子元素
+            let target = e.target.closest('.commentable-text, .commentable-image, .commentable-data');
+            if (!target) {
+                // 兜底：找到所在的模块
+                const moduleEl = e.target.closest('.commentable[data-section]');
+                if (moduleEl) {
+                    if (!moduleEl.dataset.targetId) {
+                        moduleEl.dataset.targetId = 'mod-' + moduleEl.dataset.section;
+                    }
+                    target = moduleEl;
+                }
             }
+            if (!target) return;
+
+            console.log('[v2.8.4] cmd+click', target.dataset.targetId, 'target=', target);
             e.preventDefault();
             e.stopPropagation();
-            toggleTargetSelection(moduleEl);
+            toggleTargetSelection(target);
         }, true);
 
         function openMultiSelectPanel(initialTab) {
