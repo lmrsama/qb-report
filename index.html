@@ -741,13 +741,14 @@
         const GIST_ID = '3c42d1323e54dfabcddb26635bb68944';
         const GIST_FILENAME = 'comments.json';
         const VERSIONS_FILENAME = 'versions.json';
+        const LATEST_FILENAME = 'latest.json';  // v2.11.23：分离 "撤回历史" 和 "当前最新 DOM"
 
         const AI_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 duFlw14ukZPIc0BG5yg6Mv0oOxrluboK3aT/gTxizLMopiQ9reweSYu+RMKVD/mGOY7X6Q78WrSoAtZFOeaegaTFl310mxNhTrY9t+Ez3PxyHAu4OBX60RZVzeQbowYiMaajWGfpGKHqGfC6hZ5HPbn0qyfE6AFnig== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'duFlw14ukZPIc0BG5yg6Mv0oOxrluboK3aT/gTxizLMopiQ9reweSYu+RMKVD/mGOY7X6Q78WrSoAtZFOeaegaTFl310mxNhTrY9t+Ez3PxyHAu4OBX60RZVzeQbowYiMaajWGfpGKHqGfC6hZ5HPbn0qyfE6AFnig==';
+        // 部署脚本会把 bxx6pHZk+K01eNaPjgPUmtOyQA6WZHAMrKXvWQW3KH/tc3/VmvhMSYLgh8wlU+Uw1DC8EzXs0Fl4C+bSlLlVtf0Z1YXO3/LY9qw84YIvQEZcOEzIQbQ8wnxJPcOG0Z/SobLuGeNG2ERhUU/KEE9Txw5QKlX0zH0Olg== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'bxx6pHZk+K01eNaPjgPUmtOyQA6WZHAMrKXvWQW3KH/tc3/VmvhMSYLgh8wlU+Uw1DC8EzXs0Fl4C+bSlLlVtf0Z1YXO3/LY9qw84YIvQEZcOEzIQbQ8wnxJPcOG0Z/SobLuGeNG2ERhUU/KEE9Txw5QKlX0zH0Olg==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -1780,6 +1781,9 @@
                             applyAIResult(result, targetEl);
                         }
 
+                        // v2.11.23：AI 改完后把当前 DOM 存 latest.json，刷新后恢复用
+                        await saveLatestSnapshot();
+
                         const all2 = await loadAllComments();
                         all2[commentIdx].type = 'ai_executed';
                         all2[commentIdx].version = versionNum;
@@ -2114,6 +2118,32 @@
             return versionNum;
         }
 
+        // v2.11.23：把当前 DOM（AI 改后）存为 latest，用于刷新恢复。
+        // 与 versions（撤回历史=改前 snapshot）分离，避免"刷新后被改前 snapshot 覆盖还原"。
+        async function saveLatestSnapshot() {
+            const containerClone = document.querySelector('.container').cloneNode(true);
+            stripRuntimeForAI(containerClone);
+            containerClone.querySelectorAll('img').forEach((img, idx) => {
+                const src = img.getAttribute('src') || '';
+                if (src.startsWith('data:')) {
+                    img.setAttribute('data-img-idx', String(idx));
+                    img.setAttribute('src', `__IMG_PLACEHOLDER_${idx}__`);
+                }
+            });
+            const snapshot = containerClone.outerHTML;
+            try {
+                const k = await ensureKeys();
+                if (!k) return;
+                await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `token ${k.token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        files: { [LATEST_FILENAME]: { content: JSON.stringify({ time: new Date().toLocaleString('zh-CN'), snapshot }) } }
+                    })
+                });
+            } catch(e) { console.warn('保存 latest 失败', e); }
+        }
+
         async function openVersions() {
             const modal = document.getElementById('versionModal');
             modal.style.display = 'flex';
@@ -2212,6 +2242,8 @@
                 if (changed) await saveAllComments(all);
                 await renderComments();
             } catch(e) { console.warn('刷新评论失败', e); }
+            // v2.11.23：撤回后把当前 DOM（已恢复到 v 的状态）存 latest，刷新就是这个状态
+            await saveLatestSnapshot();
             alert(`已撤回到 v${v}`);
         }
 
@@ -2644,35 +2676,40 @@
         // 页面加载时只静默检查（不弹密码框），用户点击模块再触发解锁
         renderBadges();
 
-        // 启动时从云端拉取最新snapshot，恢复线上AI修改过的内容（如果localStorage有缓存的keys）
+        // 启动时从云端拉取 latest snapshot（AI 修改后的当前最新 DOM）
+        // v2.11.23：改为读 latest.json（不再用 versions 最后一条，那是"撤回目标"=改前 snapshot）
         (async function restoreLatestSnapshot() {
             const k = await ensureKeys();
             if (!k) return; // 未解锁就不拉，等用户点模块时会触发解锁
             try {
-                const versions = await loadVersions();
-                if (versions && versions.length > 0) {
-                    const latest = versions[versions.length - 1];
-                    if (latest.snapshot) {
-                        const newContainer = document.createElement('div');
-                        newContainer.innerHTML = latest.snapshot;
-                        const oldContainer = document.querySelector('.container');
-                        if (oldContainer && newContainer.firstElementChild) {
-                            // v2.11.15：恢复前先剥离 snapshot 里可能残留的运行时 class（防止历史污染）
-                            stripRuntimeForAI(newContainer.firstElementChild);
-                            // v2.11.18：把图片占位符还原成本地 base64
-                            const srcMap = collectImageSrcs();
-                            restoreImagePlaceholders(newContainer.firstElementChild, srcMap);
-                            oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
-                            // 重新注入模块评论按钮 + 子粒度标记
-                            assignTargetIds();
-                            bindTargetClicks();
-                            injectModuleCommentBtns();
-                            await renderBadges();
-                            console.log(`[restore] 已恢复到云端 v${latest.v}（${latest.author} · ${latest.time}）`);
-                        }
-                    }
+                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                    headers: { 'Authorization': `token ${k.token}` }
+                });
+                const data = await res.json();
+                const file = data.files && data.files[LATEST_FILENAME];
+                if (!file) return; // 没有 latest.json 说明没有过 AI 修改，用本地 HTML 就好
+                let content = file.content;
+                if (file.truncated && file.raw_url) {
+                    const rawRes = await fetch(file.raw_url, { headers: { 'Authorization': `token ${k.token}` } });
+                    content = await rawRes.text();
                 }
-            } catch(e) { console.warn('恢复snapshot失败', e); }
+                const latest = JSON.parse(content);
+                if (!latest.snapshot) return;
+                const newContainer = document.createElement('div');
+                newContainer.innerHTML = latest.snapshot;
+                const oldContainer = document.querySelector('.container');
+                if (oldContainer && newContainer.firstElementChild) {
+                    stripRuntimeForAI(newContainer.firstElementChild);
+                    const srcMap = collectImageSrcs();
+                    restoreImagePlaceholders(newContainer.firstElementChild, srcMap);
+                    oldContainer.parentNode.replaceChild(newContainer.firstElementChild, oldContainer);
+                    assignTargetIds();
+                    bindTargetClicks();
+                    injectModuleCommentBtns();
+                    await renderBadges();
+                    console.log(`[restore] 已恢复到云端 latest（${latest.time}）`);
+                }
+            } catch(e) { console.warn('恢复 latest snapshot 失败', e); }
         })();
 
         // ========= 新手引导浮层 =========
