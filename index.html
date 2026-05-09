@@ -747,8 +747,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 bxx6pHZk+K01eNaPjgPUmtOyQA6WZHAMrKXvWQW3KH/tc3/VmvhMSYLgh8wlU+Uw1DC8EzXs0Fl4C+bSlLlVtf0Z1YXO3/LY9qw84YIvQEZcOEzIQbQ8wnxJPcOG0Z/SobLuGeNG2ERhUU/KEE9Txw5QKlX0zH0Olg== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'bxx6pHZk+K01eNaPjgPUmtOyQA6WZHAMrKXvWQW3KH/tc3/VmvhMSYLgh8wlU+Uw1DC8EzXs0Fl4C+bSlLlVtf0Z1YXO3/LY9qw84YIvQEZcOEzIQbQ8wnxJPcOG0Z/SobLuGeNG2ERhUU/KEE9Txw5QKlX0zH0Olg==';
+        // 部署脚本会把 jYDzFwHbFBINhcl+V2ClhpB5Tsg2cVgqzfO1I9NAX8lcd+DZQbZYj/XWgmwToI+01m/gNkhPfCp08h8yZtluyldo/LxmdkbRDvkeJvfkfCN7sVgH8sH6UnkbZbKG93W0/ac8CyZ2lE2ZPYg34iWX/4bdHN0wHqthCg== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'jYDzFwHbFBINhcl+V2ClhpB5Tsg2cVgqzfO1I9NAX8lcd+DZQbZYj/XWgmwToI+01m/gNkhPfCp08h8yZtluyldo/LxmdkbRDvkeJvfkfCN7sVgH8sH6UnkbZbKG93W0/ac8CyZ2lE2ZPYg34iWX/4bdHN0wHqthCg==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -761,6 +761,43 @@
             return null; // 不主动弹窗，由调用方决定何时弹
         }
 
+        // v2.11.24：自定义密码弹窗（替代原生 prompt，避免被 toast/浮层遮挡）
+        function showPasswordDialog(title, hint) {
+            return new Promise(resolve => {
+                const existing = document.getElementById('pwdDialog');
+                if (existing) existing.remove();
+                const el = document.createElement('div');
+                el.id = 'pwdDialog';
+                el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
+                el.innerHTML = `
+                    <div style="background:white;border-radius:12px;padding:22px 24px;width:360px;max-width:92vw;box-shadow:0 12px 36px rgba(0,0,0,0.3);">
+                        <div style="font-size:15px;font-weight:700;color:#1f2937;margin-bottom:6px;">${title}</div>
+                        <div style="font-size:12px;color:#888;margin-bottom:14px;">${hint || ''}</div>
+                        <input id="pwdInput" type="password" autocomplete="off" placeholder="请输入密码" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;outline:none;box-sizing:border-box;" />
+                        <div id="pwdErr" style="color:#ff4d4f;font-size:11px;margin-top:6px;min-height:14px;"></div>
+                        <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;">
+                            <button id="pwdCancel" style="padding:8px 16px;border:1px solid #e0e0e0;background:white;border-radius:6px;font-size:12px;cursor:pointer;color:#666;">取消</button>
+                            <button id="pwdOk" style="padding:8px 18px;border:none;background:#667eea;color:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">确定</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(el);
+                const input = el.querySelector('#pwdInput');
+                setTimeout(() => input.focus(), 50);
+                const close = (val) => { el.remove(); resolve(val); };
+                el.querySelector('#pwdOk').onclick = () => close(input.value);
+                el.querySelector('#pwdCancel').onclick = () => close(null);
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') { e.preventDefault(); close(input.value); }
+                    else if (e.key === 'Escape') { e.preventDefault(); close(null); }
+                });
+            });
+        }
+        function showPasswordError(msg) {
+            const err = document.getElementById('pwdErr');
+            if (err) err.textContent = msg;
+        }
+
         async function unlockKeys() {
             // 显式触发密码解锁
             if (_cachedKeys) return _cachedKeys;
@@ -771,24 +808,30 @@
                 console.warn('未配置加密密钥');
                 return null;
             }
-            const pwd = prompt('使用 AI 修改需要密码（向页面作者索取）：');
-            if (!pwd) return null;
-            try {
-                const enc = new TextEncoder();
-                const pwdHash = await crypto.subtle.digest('SHA-256', enc.encode(pwd));
-                const keyMaterial = await crypto.subtle.importKey('raw', pwdHash, 'AES-GCM', false, ['decrypt']);
-                const data = Uint8Array.from(atob(ENCRYPTED_KEYS), c => c.charCodeAt(0));
-                const iv = data.slice(0, 12);
-                const ciphertext = data.slice(12);
-                const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, keyMaterial, ciphertext);
-                const obj = JSON.parse(new TextDecoder().decode(plain));
-                localStorage.setItem('_qbk', btoa(JSON.stringify({ t: obj.t, a: obj.a })));
-                _cachedKeys = { token: obj.t, aiKey: obj.a };
-                return _cachedKeys;
-            } catch(e) {
-                alert('密码错误，请刷新重试');
-                return null;
+            // 最多重试 3 次
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const pwd = await showPasswordDialog(
+                    attempt === 0 ? '🔒 需要密码' : '🔒 密码错误，请重试',
+                    '使用 AI 修改需要密码，请向页面作者索取'
+                );
+                if (!pwd) return null; // 用户取消
+                try {
+                    const enc = new TextEncoder();
+                    const pwdHash = await crypto.subtle.digest('SHA-256', enc.encode(pwd));
+                    const keyMaterial = await crypto.subtle.importKey('raw', pwdHash, 'AES-GCM', false, ['decrypt']);
+                    const data = Uint8Array.from(atob(ENCRYPTED_KEYS), c => c.charCodeAt(0));
+                    const iv = data.slice(0, 12);
+                    const ciphertext = data.slice(12);
+                    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, keyMaterial, ciphertext);
+                    const obj = JSON.parse(new TextDecoder().decode(plain));
+                    localStorage.setItem('_qbk', btoa(JSON.stringify({ t: obj.t, a: obj.a })));
+                    _cachedKeys = { token: obj.t, aiKey: obj.a };
+                    return _cachedKeys;
+                } catch(e) {
+                    // 错误时继续循环，最多 3 次
+                }
             }
+            return null;
         }
 
         // 兼容旧代码的常量改为getter
@@ -1455,6 +1498,13 @@
             if (sendBtn) sendBtn.disabled = true;
             try {
                 if (useAI) {
+                    // v2.11.24：AI 修改必须先解锁密钥，再弹 toast。否则弹窗会被 toast 遮挡
+                    const k = await unlockKeys();
+                    if (!k) {
+                        if (sendBtn) sendBtn.disabled = false;
+                        showTopToast('已取消 AI 修改', 2500);
+                        return;
+                    }
                     showTopToast('AI 修改指令已发送，请稍等，进度可在 <a onclick="openAITabFromToast()">【AI 修改】</a> tab 里查看');
                 }
                 await addComment(useAI);
