@@ -746,8 +746,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 3YhMjb8YtTeHig9keKY03wd7mHfGheBbNgjxGsHy1fCse+jQghVDc4OHgTwEdehuV0I7AgcSYCQvJTPRbCXfPt+N/mvFyEWOwL4LinJD6UeZdpQmS89ZWiNUUSg68BhpcLd0bSuZK/+rTjNS/MR86QRNrjVWfTHozg== 替换为实际加密数据
-        const ENCRYPTED_KEYS = '3YhMjb8YtTeHig9keKY03wd7mHfGheBbNgjxGsHy1fCse+jQghVDc4OHgTwEdehuV0I7AgcSYCQvJTPRbCXfPt+N/mvFyEWOwL4LinJD6UeZdpQmS89ZWiNUUSg68BhpcLd0bSuZK/+rTjNS/MR86QRNrjVWfTHozg==';
+        // 部署脚本会把 K7TLWztPwOf7ijF1mqigBpfxkWYdNivvl6XUkOWKT5vxBUi3njkZj1yCpS/KWXx9OKdmm+Zt85D66RUej26xUBZzREVYTGKG58YEYjWVgSzqitIRA1gBr9lVxePBHRQ6VwyuKoLVz9BMJE0pi0hMLKj72GS0nN8d7A== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'K7TLWztPwOf7ijF1mqigBpfxkWYdNivvl6XUkOWKT5vxBUi3njkZj1yCpS/KWXx9OKdmm+Zt85D66RUej26xUBZzREVYTGKG58YEYjWVgSzqitIRA1gBr9lVxePBHRQ6VwyuKoLVz9BMJE0pi0hMLKj72GS0nN8d7A==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2723,126 +2723,104 @@
 
             "pc-2": `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
                 <style>
-                    @keyframes p2-cursor { 0%,8% { transform: translate(40px,40px); } 22%,32% { transform: translate(215px,42px); } 50%,80% { transform: translate(295px,250px); } 95%,100% { transform: translate(295px,250px); } }
-                    @keyframes p2-bubble-ai { 0%,28% { fill: rgba(255,255,255,0.15); } 32%,100% { fill: rgba(245,158,11,0.4); } }
-                    @keyframes p2-input { 0%,40% { opacity:0; transform: translateY(8px) scale(0.96); } 55%,100% { opacity:1; transform: translateY(0) scale(1); } }
-                    @keyframes p2-typing { 0%,55% { width:0; } 80%,100% { width:140px; } }
-                    @keyframes p2-send-pulse { 0%,82% { transform: scale(1); fill:#f59e0b; } 88% { transform: scale(1.08); fill:#d97706; } 95%,100% { transform: scale(1); fill:#f59e0b; } }
-                    .p2-cursor { animation: p2-cursor 4s ease-in-out infinite; }
-                    .p2-bubble-ai-bg { animation: p2-bubble-ai 4s linear infinite; }
-                    .p2-input { animation: p2-input 4s ease-out infinite; transform-origin: center; }
+                    @keyframes p2-input { 0%,20% { opacity:0; transform: translateY(6px); } 30%,100% { opacity:1; transform: translateY(0); } }
+                    @keyframes p2-typing { 0%,35% { width:0; } 60%,100% { width:130px; } }
+                    @keyframes p2-panel { 0%,65% { opacity:0; transform: translateX(60px); } 80%,100% { opacity:1; transform: translateX(0); } }
+                    @keyframes p2-export { 0%,85% { fill:#f0f0f0; } 90%,100% { fill:#667eea; } }
+                    .p2-input { animation: p2-input 4s ease-out infinite; }
                     .p2-text { animation: p2-typing 4s ease-out infinite; }
-                    .p2-send { animation: p2-send-pulse 4s ease-in-out infinite; transform-origin: 280px 244px; transform-box: fill-box; }
+                    .p2-panel { animation: p2-panel 4s ease-out infinite; }
+                    .p2-export { animation: p2-export 4s linear infinite; }
                 </style>
-                <!-- 页面卡片 + 已选元素（蓝色实线） -->
-                <rect x="40" y="80" width="280" height="60" rx="8" fill="white" stroke="#e8e8e8"/>
-                <rect x="60" y="95" width="240" height="32" rx="4" fill="rgba(102,126,234,0.10)" stroke="#667eea" stroke-width="2"/>
-                <text x="180" y="116" font-size="13" fill="#333" font-weight="600" text-anchor="middle">数字 40w</text>
-                <!-- 深色小气泡（始终显示，AI 按钮被点击高亮） -->
-                <g>
-                    <rect x="100" y="40" width="160" height="32" rx="7" fill="#1f2937"/>
-                    <rect x="170" y="46" width="1" height="20" fill="rgba(255,255,255,0.2)"/>
-                    <rect x="105" y="44" width="60" height="24" rx="4" fill="rgba(255,255,255,0)"/>
-                    <text x="135" y="61" fill="white" font-size="12" font-weight="600" text-anchor="middle">💬 评论</text>
-                    <rect class="p2-bubble-ai-bg" x="175" y="44" width="80" height="24" rx="4"/>
-                    <text x="215" y="61" fill="white" font-size="12" font-weight="600" text-anchor="middle">✨ AI 修改</text>
-                    <polygon points="115,72 121,80 127,72" fill="#1f2937"/>
-                </g>
-                <!-- inline 输入框（后期显示） -->
+                <!-- 已选中元素 -->
+                <rect x="30" y="30" width="180" height="36" rx="4" fill="rgba(102,126,234,0.10)" stroke="#667eea" stroke-width="2"/>
+                <text x="120" y="53" font-size="12" fill="#333" font-weight="600" text-anchor="middle">总曝光 ~40w</text>
+                <!-- 气泡（💬 评论 高亮） -->
+                <rect x="50" y="4" width="130" height="22" rx="5" fill="#1f2937"/>
+                <rect x="55" y="7" width="50" height="16" rx="3" fill="rgba(102,126,234,0.4)"/>
+                <text x="80" y="19" fill="white" font-size="9" font-weight="600" text-anchor="middle">💬 评论</text>
+                <text x="135" y="19" fill="rgba(255,255,255,0.6)" font-size="9" text-anchor="middle">✨ AI 修改</text>
+                <!-- inline 输入框 -->
                 <g class="p2-input">
-                    <rect x="40" y="160" width="280" height="110" rx="10" fill="white" stroke="#f59e0b" stroke-width="1.5"/>
-                    <rect x="55" y="174" width="92" height="20" rx="10" fill="#fef3c7"/>
-                    <text x="101" y="188" fill="#b45309" font-size="11" font-weight="600" text-anchor="middle">✨ AI 修改</text>
-                    <text x="312" y="186" fill="#999" font-size="9" text-anchor="end">已选 1 项</text>
-                    <!-- 文本框 -->
-                    <rect x="55" y="200" width="250" height="32" rx="5" fill="white" stroke="#e5e7eb"/>
-                    <rect class="p2-text" x="62" y="213" height="6" rx="2" fill="#333" style="width:0"/>
-                    <!-- 取消 + 发送 -->
-                    <rect x="195" y="240" width="46" height="22" rx="4" fill="#f3f4f6"/>
-                    <text x="218" y="255" fill="#555" font-size="11" font-weight="600" text-anchor="middle">取消</text>
-                    <g class="p2-send">
-                        <rect x="247" y="240" width="58" height="22" rx="4" fill="#f59e0b"/>
-                        <text x="276" y="255" fill="white" font-size="11" font-weight="600" text-anchor="middle">⚡ 发送</text>
-                    </g>
+                    <rect x="30" y="80" width="180" height="70" rx="8" fill="white" stroke="#667eea" stroke-width="1.5"/>
+                    <rect x="40" y="90" width="60" height="14" rx="7" fill="#eef2ff"/>
+                    <text x="70" y="100" fill="#4f46e5" font-size="9" font-weight="600" text-anchor="middle">💬 评论</text>
+                    <rect x="40" y="110" width="150" height="20" rx="4" fill="white" stroke="#e5e7eb"/>
+                    <rect class="p2-text" x="46" y="118" height="5" rx="2" fill="#333" style="width:0"/>
+                    <rect x="145" y="135" width="50" height="14" rx="3" fill="#667eea"/>
+                    <text x="170" y="145" fill="white" font-size="8" font-weight="600" text-anchor="middle">发送</text>
                 </g>
-                <!-- 鼠标 -->
-                <g class="p2-cursor">
-                    <path d="M0 0 L0 18 L5 14 L8 22 L11 21 L8 13 L14 13 Z" fill="#333" stroke="white" stroke-width="1.2"/>
+                <!-- 右侧评论面板 -->
+                <g class="p2-panel">
+                    <rect x="230" y="20" width="120" height="270" rx="6" fill="white" stroke="#e0e0e0"/>
+                    <text x="250" y="42" font-size="10" font-weight="700" fill="#333">💬 评论</text>
+                    <text x="310" y="42" font-size="10" fill="#999">⚡ AI</text>
+                    <line x1="240" y1="50" x2="290" y2="50" stroke="#667eea" stroke-width="2"/>
+                    <!-- 评论列表 -->
+                    <rect x="240" y="60" width="100" height="28" rx="4" fill="#f8f8f8"/>
+                    <rect x="246" y="66" width="50" height="4" rx="2" fill="#999"/>
+                    <rect x="246" y="76" width="80" height="4" rx="2" fill="#aaa"/>
+                    <rect x="240" y="96" width="100" height="28" rx="4" fill="#f8f8f8"/>
+                    <rect x="246" y="102" width="60" height="4" rx="2" fill="#999"/>
+                    <rect x="246" y="112" width="70" height="4" rx="2" fill="#aaa"/>
+                    <!-- 导出按钮 -->
+                    <rect class="p2-export" x="240" y="250" width="100" height="24" rx="4"/>
+                    <text x="290" y="266" fill="white" font-size="9" font-weight="600" text-anchor="middle">📤 导出全部评论</text>
                 </g>
-                <text x="180" y="298" font-size="11" fill="#999" text-anchor="middle">① 点气泡按钮 → ② 输入诉求 → ③ 点【发送】</text>
+                <text x="180" y="310" font-size="10" fill="#999" text-anchor="middle">评论存云端 · owner 可导出给 WorkBuddy 批量返工</text>
             </svg>`,
 
             "pc-3": `<svg class="help-svg" viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg">
                 <style>
-                    @keyframes p3-cursor { 0%,15% { transform: translate(290px,250px); } 30%,55% { transform: translate(275px,40px); } 70%,100% { transform: translate(193px,40px); } }
-                    @keyframes p3-fab-pulse { 0%,15% { transform: scale(1); } 22% { transform: scale(0.92); } 30%,100% { transform: scale(1); } }
-                    @keyframes p3-panel { 0%,18% { transform: translateX(160px); opacity: 0; } 35%,100% { transform: translateX(0); opacity: 1; } }
-                    @keyframes p3-tab-bar { 0%,55% { transform: translateX(0); } 70%,100% { transform: translateX(80px); } }
-                    @keyframes p3-tab-comment { 0%,55% { fill: #1f2937; font-weight: 700; } 70%,100% { fill: #999; font-weight: 500; } }
-                    @keyframes p3-tab-ai { 0%,55% { fill: #999; font-weight: 500; } 70%,100% { fill: #1f2937; font-weight: 700; } }
-                    @keyframes p3-comment-list { 0%,55% { opacity: 1; } 65%,100% { opacity: 0; } }
-                    @keyframes p3-ai-list { 0%,60% { opacity: 0; } 75%,100% { opacity: 1; } }
-                    .p3-cursor { animation: p3-cursor 4.5s ease-in-out infinite; }
-                    .p3-fab { animation: p3-fab-pulse 4.5s ease-in-out infinite; transform-origin: 308px 268px; transform-box: fill-box; }
-                    .p3-panel { animation: p3-panel 4.5s ease-out infinite; transform-origin: right; }
-                    .p3-tab-bar { animation: p3-tab-bar 4.5s ease-in-out infinite; }
-                    .p3-tab-comment { animation: p3-tab-comment 4.5s ease-in-out infinite; }
-                    .p3-tab-ai { animation: p3-tab-ai 4.5s ease-in-out infinite; }
-                    .p3-comment-list { animation: p3-comment-list 4.5s ease-in-out infinite; }
-                    .p3-ai-list { animation: p3-ai-list 4.5s ease-in-out infinite; }
+                    @keyframes p3-input { 0%,15% { opacity:0; } 25%,100% { opacity:1; } }
+                    @keyframes p3-typing { 0%,30% { width:0; } 50%,100% { width:110px; } }
+                    @keyframes p3-changed { 0%,55% { fill:#333; } 65%,100% { fill:#0000ff; } }
+                    @keyframes p3-panel { 0%,60% { opacity:0; transform: translateX(60px); } 75%,100% { opacity:1; transform: translateX(0); } }
+                    @keyframes p3-revert { 0%,85% { fill:#f0f0f0; } 92%,100% { fill:#ff4d4f; } }
+                    .p3-input { animation: p3-input 5s ease-out infinite; }
+                    .p3-text { animation: p3-typing 5s ease-out infinite; }
+                    .p3-changed { animation: p3-changed 5s linear infinite; }
+                    .p3-panel { animation: p3-panel 5s ease-out infinite; }
+                    .p3-revert { animation: p3-revert 5s linear infinite; }
                 </style>
-                <!-- 模拟页面背景 -->
-                <rect x="20" y="20" width="180" height="280" rx="6" fill="#fafbff" stroke="#eee"/>
-                <rect x="35" y="36" width="100" height="8" rx="2" fill="#eee"/>
-                <rect x="35" y="52" width="140" height="6" rx="2" fill="#f0f0f0"/>
-                <rect x="35" y="64" width="120" height="6" rx="2" fill="#f0f0f0"/>
-                <!-- 右下角 💬 fab -->
-                <g class="p3-fab">
-                    <circle cx="308" cy="268" r="18" fill="#667eea"/>
-                    <text x="308" y="274" fill="white" font-size="14" text-anchor="middle">💬</text>
+                <!-- 已选中元素 -->
+                <rect x="30" y="30" width="180" height="36" rx="4" fill="rgba(102,126,234,0.10)" stroke="#667eea" stroke-width="2"/>
+                <text class="p3-changed" x="120" y="53" font-size="12" font-weight="600" text-anchor="middle">总曝光 ~40w</text>
+                <!-- 气泡（✨ AI 修改 高亮） -->
+                <rect x="50" y="4" width="130" height="22" rx="5" fill="#1f2937"/>
+                <text x="80" y="19" fill="rgba(255,255,255,0.6)" font-size="9" text-anchor="middle">💬 评论</text>
+                <rect x="110" y="7" width="65" height="16" rx="3" fill="rgba(245,158,11,0.4)"/>
+                <text x="142" y="19" fill="white" font-size="9" font-weight="600" text-anchor="middle">✨ AI 修改</text>
+                <!-- inline 输入框（橙色主题） -->
+                <g class="p3-input">
+                    <rect x="30" y="80" width="180" height="70" rx="8" fill="white" stroke="#f59e0b" stroke-width="1.5"/>
+                    <rect x="40" y="90" width="70" height="14" rx="7" fill="#fef3c7"/>
+                    <text x="75" y="100" fill="#b45309" font-size="9" font-weight="600" text-anchor="middle">✨ AI 修改</text>
+                    <rect x="40" y="110" width="150" height="20" rx="4" fill="white" stroke="#e5e7eb"/>
+                    <rect class="p3-text" x="46" y="118" height="5" rx="2" fill="#333" style="width:0"/>
+                    <rect x="140" y="135" width="55" height="14" rx="3" fill="#f59e0b"/>
+                    <text x="167" y="145" fill="white" font-size="8" font-weight="600" text-anchor="middle">⚡ 发送</text>
                 </g>
-                <!-- 评论侧栏（从右滑入） -->
+                <!-- 右侧 AI 修改面板 + 版本历史 -->
                 <g class="p3-panel">
-                    <rect x="200" y="20" width="140" height="280" rx="6" fill="white" stroke="#e0e0e0"/>
-                    <!-- 顶部标题 -->
-                    <text x="212" y="40" font-size="11" font-weight="700" fill="#333">评论中心 · 全部</text>
-                    <!-- Tab -->
-                    <rect x="200" y="50" width="140" height="26" fill="#fafafa"/>
-                    <line x1="200" y1="76" x2="340" y2="76" stroke="#eee"/>
-                    <text class="p3-tab-comment" x="235" y="68" font-size="11" text-anchor="middle">💬 评论</text>
-                    <text class="p3-tab-ai" x="305" y="68" font-size="11" text-anchor="middle">⚡ AI 修改</text>
-                    <!-- 蓝色下划线 -->
-                    <rect class="p3-tab-bar" x="200" y="74" width="70" height="2" fill="#667eea"/>
-                    <!-- 评论列表 -->
-                    <g class="p3-comment-list">
-                        <rect x="210" y="86" width="120" height="34" rx="4" fill="#f8f8f8"/>
-                        <text x="215" y="98" font-size="9" fill="#999">汉博 · 今天</text>
-                        <rect x="215" y="104" width="80" height="4" rx="2" fill="#aaa"/>
-                        <rect x="215" y="112" width="100" height="4" rx="2" fill="#aaa"/>
-                        <rect x="210" y="128" width="120" height="34" rx="4" fill="#f8f8f8"/>
-                        <text x="215" y="140" font-size="9" fill="#999">花姐 · 今天</text>
-                        <rect x="215" y="146" width="90" height="4" rx="2" fill="#aaa"/>
-                        <rect x="215" y="154" width="70" height="4" rx="2" fill="#aaa"/>
-                    </g>
-                    <!-- AI 修改列表 -->
-                    <g class="p3-ai-list">
-                        <rect x="210" y="86" width="120" height="36" rx="4" fill="#f0f7ff"/>
-                        <rect x="215" y="92" width="56" height="11" rx="2" fill="#667eea"/>
-                        <text x="243" y="100" font-size="8" fill="white" font-weight="600" text-anchor="middle">⚡ AI已执行 v3</text>
-                        <text x="215" y="112" font-size="9" fill="#666">数字 40w → 50w</text>
-                        <rect x="210" y="128" width="120" height="36" rx="4" fill="#f0f7ff"/>
-                        <rect x="215" y="134" width="56" height="11" rx="2" fill="#667eea"/>
-                        <text x="243" y="142" font-size="8" fill="white" font-weight="600" text-anchor="middle">⚡ AI已执行 v2</text>
-                        <text x="215" y="154" font-size="9" fill="#666">删掉黄底</text>
-                        <!-- 版本历史按钮提示 -->
-                        <rect x="215" y="180" width="80" height="18" rx="3" fill="#f0f0f0"/>
-                        <text x="255" y="192" font-size="9" fill="#666" text-anchor="middle">📜 版本历史</text>
-                    </g>
+                    <rect x="230" y="20" width="120" height="270" rx="6" fill="white" stroke="#e0e0e0"/>
+                    <text x="250" y="42" font-size="10" fill="#999">💬 评论</text>
+                    <text x="310" y="42" font-size="10" font-weight="700" fill="#333">⚡ AI</text>
+                    <line x1="290" y1="50" x2="340" y2="50" stroke="#667eea" stroke-width="2"/>
+                    <!-- AI 执行记录 -->
+                    <rect x="240" y="60" width="100" height="36" rx="4" fill="#f0f7ff"/>
+                    <rect x="246" y="66" width="46" height="10" rx="2" fill="#667eea"/>
+                    <text x="269" y="73" font-size="7" fill="white" font-weight="600" text-anchor="middle">⚡ AI v1</text>
+                    <text x="246" y="88" font-size="8" fill="#555">字色改蓝</text>
+                    <!-- 版本历史按钮 -->
+                    <rect x="240" y="110" width="100" height="20" rx="3" fill="#f0f0f0"/>
+                    <text x="290" y="124" font-size="9" fill="#666" text-anchor="middle">📜 版本历史</text>
+                    <!-- 撤回按钮 -->
+                    <rect class="p3-revert" x="240" y="145" width="100" height="24" rx="4"/>
+                    <text x="290" y="161" fill="white" font-size="9" font-weight="600" text-anchor="middle">↩️ 撤回此操作</text>
+                    <text x="290" y="190" font-size="8" fill="#999" text-anchor="middle">恢复到操作前状态</text>
                 </g>
-                <!-- 鼠标 -->
-                <g class="p3-cursor">
-                    <path d="M0 0 L0 18 L5 14 L8 22 L11 21 L8 13 L14 13 Z" fill="#333" stroke="white" stroke-width="1.2"/>
-                </g>
+                <text x="180" y="310" font-size="10" fill="#999" text-anchor="middle">AI 3-15 秒改页面 · 改坏了版本历史一键撤回</text>
             </svg>`,
 
             // ===== 手机端动画 =====
@@ -2972,7 +2950,7 @@
                     <circle cx="20" cy="20" r="18" fill="rgba(102,126,234,0.2)"/>
                     <circle cx="20" cy="20" r="11" fill="rgba(102,126,234,0.5)"/>
                 </g>
-                <text x="120" y="320" font-size="9" fill="#bbb" text-anchor="middle">输入后点按钮 · list 实时刷新</text>
+                <text x="120" y="320" font-size="9" fill="#bbb" text-anchor="middle">💬 评论存云端 · owner 在 PC 端可导出全部</text>
             </svg>`
         };
 
@@ -2980,13 +2958,13 @@
         const HELP_STEPS = {
             pc: [
                 { num: 1, title: '⌘ 选中元素', desc: '按住 ⌘（Mac）/ Ctrl（Win）单击文案/图片/数据 → 元素出现蓝色实线 + 上方弹出深色小气泡（💬 评论 / ✨ AI 修改）；也可拖动框选多个' },
-                { num: 2, title: '点工具栏 → 输入内容', desc: '点小气泡的「💬 评论」或「✨ AI 修改」→ 元素旁弹出 inline 输入框；输入诉求后点【发送】按钮提交' },
-                { num: 3, title: '右下 💬 看记录', desc: '点右下角 💬 拉起评论侧栏：「💬 评论」tab 看所有评论；「✨ AI 修改」tab 看 AI 改过哪些（含版本回滚）' }
+                { num: 2, title: '💬 评论 + 导出', desc: '点气泡「💬 评论」→ 弹输入框 → 写反馈点【发送】。评论自动存云端，右下角 💬 查看全部。方案 owner 可【📤 导出全部】为文本，丢给 WorkBuddy 批量返工' },
+                { num: 3, title: '✨ AI 修改 + 撤回', desc: '点气泡「✨ AI 修改」→ 弹输入框 → 描述改动点【发送】→ 3-15 秒页面直接变。改坏了？右下角 💬 →「AI 修改」tab →【📜 版本历史】→ 点「↩️ 撤回此操作」恢复' }
             ],
             mobile: [
-                { num: 1, title: '如需评论，先切换为批注模式', desc: '默认是「只读」态，点元素无反应。必须点右上角【只读】按钮切到「批注」态（蓝底=批注中），才能开始写评论或 AI 修改' },
-                { num: 2, title: '点元素弹卡片', desc: '批注态下单击文案/图片/数据 → 底部弹出评论卡片（半屏），上方显示该元素现有评论，下方输入框继续追加' },
-                { num: 3, title: '💬 评论 / ✨ AI 修改', desc: '输入诉求后点【💬 发表评论】记录建议，或点【✨ AI 修改】3-15 秒实时改 HTML；改坏可在 list 里看到，PC 端【📜 版本历史】回滚' }
+                { num: 1, title: '切批注 + 点元素', desc: '右上角点【只读】切到【批注】（蓝底=批注中）。单击文案/图片/数据 → 底部弹出评论卡片' },
+                { num: 2, title: '💬 评论 + 导出', desc: '在卡片里输入反馈 → 点【💬 发表评论】。评论自动存云端。方案 owner 可在 PC 端【📤 导出全部】为文本，丢给 WorkBuddy 批量返工' },
+                { num: 3, title: '✨ AI 修改 + 撤回', desc: '在卡片里输入改动诉求 → 点【✨ AI 修改】→ 3-15 秒生效。改坏了在 PC 端右下角 💬 →「AI 修改」tab →【📜 版本历史】→ 撤回' }
             ]
         };
 
