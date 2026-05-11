@@ -752,7 +752,7 @@
         const WORKER_BASE = 'https://1406195631-cmjoyal0hh.ap-guangzhou.tencentscf.com';
 
         // 仅 AI 改稿密钥（deepseek API key）保留密码加密存储——deepseek key 暴露不会被自动 revoke
-        const ENCRYPTED_KEYS = 'auE3zbUVTwYvpzxp2z11TDZ25HnH4NsLQpXdQtl7ibyEV2b7qjAEjMl+pUcurncV+5DpJsqSCeQl+BqpyqSoy5HXEu8v70rKAkA9fZSdQVyzfmeVP/b+D6AaWcWMzyo8B6EUt5I0WRoMXSLPfoRE9t1iZTNLWh5a4w==';
+        const ENCRYPTED_KEYS = '5F46/3z7KEsHlUpfVJvU733L9t1XIpZXJG8cgOzvAvn9gEpElJUQWztVtxBu0JQ5g36s2uN4CTIkqaNbKO1voeBswRIht1jS70oa2zZFh8pxSvqD8+nXxpx4Y6Y/0R8qihgz5+n6cKd6CiRFp/wmFVCtf2zSc9AdZw==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -771,7 +771,7 @@
                 if (existing) existing.remove();
                 const el = document.createElement('div');
                 el.id = 'pwdDialog';
-                el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
+                el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
                 el.innerHTML = `
                     <div style="background:white;border-radius:12px;padding:22px 24px;width:360px;max-width:92vw;box-shadow:0 12px 36px rgba(0,0,0,0.3);">
                         <div style="font-size:15px;font-weight:700;color:#1f2937;margin-bottom:6px;">${title}</div>
@@ -785,11 +785,13 @@
                     </div>
                 `;
                 document.body.appendChild(el);
+                // v2.12.1：阻止弹窗内的点击冒泡到 document，避免被全局 click handler 干扰
+                el.addEventListener('click', (ev) => { ev.stopPropagation(); });
                 const input = el.querySelector('#pwdInput');
                 setTimeout(() => input.focus(), 50);
                 const close = (val) => { el.remove(); resolve(val); };
-                el.querySelector('#pwdOk').onclick = () => close(input.value);
-                el.querySelector('#pwdCancel').onclick = () => close(null);
+                el.querySelector('#pwdOk').onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); close(input.value); };
+                el.querySelector('#pwdCancel').onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); close(null); };
                 input.addEventListener('keydown', e => {
                     if (e.key === 'Enter') { e.preventDefault(); close(input.value); }
                     else if (e.key === 'Escape') { e.preventDefault(); close(null); }
@@ -878,7 +880,7 @@
                 if (existing) existing.remove();
                 const el = document.createElement('div');
                 el.id = 'inputDialog';
-                el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
+                el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
                 el.innerHTML = `
                     <div style="background:white;border-radius:12px;padding:22px 24px;width:360px;max-width:92vw;box-shadow:0 12px 36px rgba(0,0,0,0.3);">
                         <div style="font-size:15px;font-weight:700;color:#1f2937;margin-bottom:6px;">${title}</div>
@@ -891,11 +893,12 @@
                     </div>
                 `;
                 document.body.appendChild(el);
+                el.addEventListener('click', (ev) => { ev.stopPropagation(); });
                 const input = el.querySelector('#textInput');
                 setTimeout(() => input.focus(), 50);
                 const close = (val) => { el.remove(); resolve(val); };
-                el.querySelector('#textOk').onclick = () => close(input.value);
-                el.querySelector('#textCancel').onclick = () => close(null);
+                el.querySelector('#textOk').onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); close(input.value); };
+                el.querySelector('#textCancel').onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); close(null); };
                 input.addEventListener('keydown', e => {
                     if (e.key === 'Enter') { e.preventDefault(); close(input.value); }
                     else if (e.key === 'Escape') { e.preventDefault(); close(null); }
@@ -2574,6 +2577,8 @@
         //   - 隐藏评论态 → 单击什么都不做
         //   - 展示评论态 → 单击元素=选中（圆点+小气泡），点空白取消
         document.addEventListener('click', (e) => {
+            // v2.12.1：模态弹窗（密码框、昵称框）优先 return，绝不走选区逻辑
+            if (e.target.closest('#pwdDialog, #inputDialog')) return;
             // v2.11：浮动小气泡和输入框点击优先 return，绝不走选区逻辑
             if (e.target.closest('#bubbleToolbar, #bubbleInput, #topToast, #mobileCommentCard')) return;
             const showComments = document.body.classList.contains('show-comments');
@@ -2763,6 +2768,8 @@
         // ========= 点空白处退出多选 =========
         document.addEventListener('click', (e) => {
             if (!isInSelectionMode()) return;
+            // v2.12.1：模态弹窗（密码框、昵称框）优先 return
+            if (e.target.closest('#pwdDialog, #inputDialog')) return;
             // 点 评论面板 / FAB / 版本modal / 顶部按钮 / commentable 元素 / v2.11 浮层 都不算空白
             if (e.target.closest('#commentPanel, #globalCommentFab, #versionModal, #toggleCommentVisBtn, #helpBtn, #helpModal, #bubbleToolbar, #bubbleInput, #topToast, #mobileCommentCard')) return;
             if (e.target.closest('.commentable-text, .commentable-image, .commentable-data')) return;
