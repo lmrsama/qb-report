@@ -747,11 +747,11 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 yPP5y9nre9DW0G3aDETMiUtvcc49KEaabaoxLsG32E0jKblX+MQNAfJtlPhs/ljHS5YSHUDTd2ouBy/EKjwdDcgE9Rv9/il3yBCYeJbxSQ8J/OITJx8= 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'yPP5y9nre9DW0G3aDETMiUtvcc49KEaabaoxLsG32E0jKblX+MQNAfJtlPhs/ljHS5YSHUDTd2ouBy/EKjwdDcgE9Rv9/il3yBCYeJbxSQ8J/OITJx8=';
+        // 部署脚本会把 XMIHeExALJaVlDJTOHruz6WdkE6ww/v7NLxHyM9awmhwM9R+PBa08aZ9jRdyUTkRNyfkJNsTEe6rGFgs/r8gtMJCvBVr6ceQBeynDtirHMjM92W7XOUgXj1fyFVBu9fTnwI72sV8LUhDJz2ADHEW41ifTAePVAgq2g== 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'XMIHeExALJaVlDJTOHruz6WdkE6ww/v7NLxHyM9awmhwM9R+PBa08aZ9jRdyUTkRNyfkJNsTEe6rGFgs/r8gtMJCvBVr6ceQBeynDtirHMjM92W7XOUgXj1fyFVBu9fTnwI72sV8LUhDJz2ADHEW41ifTAePVAgq2g==';
         // v2.11.27：评论用明文 gist token（仅 gist 权限，最坏情况是被刷点赞/灌广告评论）
         // 让访客无需密码就能发评论；AI 改稿仍走加密 token（高危操作要密码）
-        const PUBLIC_GIST_TOKEN = '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';
+        const PUBLIC_GIST_TOKEN = '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';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -966,7 +966,7 @@
             // v2.11.27：写评论用 PUBLIC_GIST_TOKEN，无需密码解锁
             // 优先用解锁后的 token（如果用户已解锁），否则用嵌入的明文 token
             const token = (_cachedKeys && _cachedKeys.token) || PUBLIC_GIST_TOKEN;
-            if (!token || token === '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') {
+            if (!token || token === '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') {
                 console.warn('PUBLIC_GIST_TOKEN 未配置，评论无法上云');
                 return;
             }
@@ -2591,12 +2591,15 @@
                 return;
             }
 
-            // ====== PC：⌘+click 或多选态下点元素 → 选中（唯一进入选中态的入口）======
-            if (isCmd || inSel) {
+            // ====== PC：选中逻辑（v2.11.27 修正）======
+            //   - 批注态普通单击 commentable → 选中 → 弹出工具栏
+            //   - Cmd/Ctrl + 单击 → 多选
+            //   - 多选态下点空白 → 退出
+            if (isCmd || inSel || showComments) {
                 const target = findTarget();
                 if (!target) {
-                    // 多选态下点空白 → 退出
-                    if (inSel && !isCmd) {
+                    // 批注态/多选态点空白 → 退出选中态
+                    if ((inSel || showComments) && !isCmd) {
                         e.preventDefault();
                         e.stopPropagation();
                         exitSelectionMode();
@@ -2605,32 +2608,16 @@
                 }
                 e.preventDefault();
                 e.stopPropagation();
+                if (!target.dataset.targetId && target.dataset.section) {
+                    target.dataset.targetId = 'mod-' + target.dataset.section;
+                }
                 toggleTargetSelection(target);
                 return;
             }
 
-            // ====== PC：批注态点击行为 ======
-            // v2.11.26：改成"点即留言"——
-            //   - 批注态 + 单击任何 commentable 元素（无论有无评论）→ 直接打开评论面板
-            //   - Cmd/Ctrl + 单击 → 走多选逻辑（保留老习惯，由后续分支处理）
-            //   - 已有评论的元素：自动过滤显示已有评论 + 可继续追加
-            //   - 空元素：打开空面板，输入即写新评论
-            if (showComments && !isCmd) {
-                const target = findTarget();
-                if (target) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!target.dataset.targetId && target.dataset.section) {
-                        target.dataset.targetId = 'mod-' + target.dataset.section;
-                    }
-                    if (target.classList.contains('commentable-text') || target.classList.contains('commentable-image') || target.classList.contains('commentable-data')) {
-                        openPanel({ kind: 'target', el: target });
-                    } else {
-                        openPanel(target.dataset.section);
-                    }
-                    return;
-                }
-                // 点空白：如果面板正开着，关掉它
+            // ====== PC：批注态下的面板保留逻辑（点已有评论徽标时关闭面板）======
+            if (showComments) {
+                // 兜底：面板开着且点空白 → 关闭
                 const panel = document.getElementById('commentPanel');
                 if (panel && panel.classList.contains('open')) {
                     e.preventDefault();
