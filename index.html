@@ -747,8 +747,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 nP4Wboe85k1HbflAaNgzOdly0+Dt/WNh1M3S1WJUTbmccgtCTaA7coI+/YiwLpjSG5wZpp+Peot9J3Zn/up7daSflCx1WdHNTOOAbP7V6AJ3XAfVzYE= 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'nP4Wboe85k1HbflAaNgzOdly0+Dt/WNh1M3S1WJUTbmccgtCTaA7coI+/YiwLpjSG5wZpp+Peot9J3Zn/up7daSflCx1WdHNTOOAbP7V6AJ3XAfVzYE=';
+        // 部署脚本会把 pBUPoWlSdp6DmMA6qborAQU3KKiN35aDgcTceBo38yWVBSMcTfABNzXgYRqlQBIhH9lPSLOTB548zS2W1tPWZKcAWq4lYeiVqW6bH6LJ5Sxwqor3TMM= 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'pBUPoWlSdp6DmMA6qborAQU3KKiN35aDgcTceBo38yWVBSMcTfABNzXgYRqlQBIhH9lPSLOTB548zS2W1tPWZKcAWq4lYeiVqW6bH6LJ5Sxwqor3TMM=';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -2588,10 +2588,14 @@
                 return;
             }
 
-            // ====== PC：批注态 + 单击有评论元素 → 打开右侧评论区，过滤显示 ======
-            // 不进选中态、不弹小气泡。可继续在面板里追加新评论。
-            if (showComments) {
-                const target = e.target.closest('[data-target-id].has-comments, .commentable[data-section].has-comments');
+            // ====== PC：批注态点击行为 ======
+            // v2.11.26：改成"点即留言"——
+            //   - 批注态 + 单击任何 commentable 元素（无论有无评论）→ 直接打开评论面板
+            //   - Cmd/Ctrl + 单击 → 走多选逻辑（保留老习惯，由后续分支处理）
+            //   - 已有评论的元素：自动过滤显示已有评论 + 可继续追加
+            //   - 空元素：打开空面板，输入即写新评论
+            if (showComments && !isCmd) {
+                const target = findTarget();
                 if (target) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -2752,6 +2756,36 @@
         // 用户需点击按钮提交
         // 页面加载时只静默检查（不弹密码框），用户点击模块再触发解锁
         renderBadges();
+
+        // v2.11.26：评论实时同步——双保险机制
+        // 1) 30 秒轮询：拉云端最新评论，与本地比对，有新增就重渲染徽标
+        // 2) 提交后 5 秒回拉确认：addComment 末尾会 setTimeout 5s 后再拉一次（在 addComment 修改）
+        // 3) 页面切换可见性时立即拉一次（避免长时间挂起后看到旧数据）
+        let _lastCommentSig = '';
+        async function pollComments(reason) {
+            try {
+                const data = await loadFromCloud();
+                const all = (data && data.all) || [];
+                // 用 length + 最后一条 id/time 当签名，比对就行
+                const last = all.length ? all[all.length - 1] : null;
+                const sig = all.length + ':' + (last ? (last.id || last.time || '') : '');
+                if (sig !== _lastCommentSig) {
+                    _lastCommentSig = sig;
+                    if (reason !== 'init') {
+                        console.log('[poll] 评论变化（' + reason + '），重新渲染', all.length, '条');
+                    }
+                    await renderBadges();
+                }
+            } catch (e) { console.warn('[poll] 失败', e); }
+        }
+        // 初始 sig
+        pollComments('init');
+        // 30 秒轮询
+        setInterval(() => pollComments('interval'), 30000);
+        // visibility 切回前台立即拉
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) pollComments('visible');
+        });
 
         // 启动时从云端拉取 latest snapshot（AI 修改后的当前最新 DOM）
         // v2.11.23：改为读 latest.json（不再用 versions 最后一条，那是"撤回目标"=改前 snapshot）
