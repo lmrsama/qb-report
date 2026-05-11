@@ -738,7 +738,7 @@
         // ========================================
         // 配置区
         // ========================================
-        const GIST_ID = '3c42d1323e54dfabcddb26635bb68944';
+        const GIST_ID = '6874dd63b2d1c87e828c92cbe61dbdf4';
         const GIST_FILENAME = 'comments.json';
         const VERSIONS_FILENAME = 'versions.json';
         const LATEST_FILENAME = 'latest.json';  // v2.11.23：分离 "撤回历史" 和 "当前最新 DOM"
@@ -747,8 +747,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 jYDzFwHbFBINhcl+V2ClhpB5Tsg2cVgqzfO1I9NAX8lcd+DZQbZYj/XWgmwToI+01m/gNkhPfCp08h8yZtluyldo/LxmdkbRDvkeJvfkfCN7sVgH8sH6UnkbZbKG93W0/ac8CyZ2lE2ZPYg34iWX/4bdHN0wHqthCg== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'jYDzFwHbFBINhcl+V2ClhpB5Tsg2cVgqzfO1I9NAX8lcd+DZQbZYj/XWgmwToI+01m/gNkhPfCp08h8yZtluyldo/LxmdkbRDvkeJvfkfCN7sVgH8sH6UnkbZbKG93W0/ac8CyZ2lE2ZPYg34iWX/4bdHN0wHqthCg==';
+        // 部署脚本会把 xPK0se1B/9bKUJaoGuI3X+Op8TSOqTfgUKPbpb3uYSzxkbZcE3ZxlQXHIQr4WdbS3t3duOFxPxUD6Az5y3lOAyKVpU3G3V1ZdAKguxP8uOgegE4wh6I= 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'xPK0se1B/9bKUJaoGuI3X+Op8TSOqTfgUKPbpb3uYSzxkbZcE3ZxlQXHIQr4WdbS3t3duOFxPxUD6Az5y3lOAyKVpU3G3V1ZdAKguxP8uOgegE4wh6I=';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -917,18 +917,43 @@
 
         // ===== 云端存储（GitHub Gist）=====
         async function loadFromCloud() {
-            const k = await ensureKeys();
-            if (!k) return getLocal();
+            // v2.11.25：读取走匿名公开 fetch（gist 本身 public），让访客无需密码就能看到评论
             try {
                 const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                    headers: { 'Authorization': `token ${k.token}` }
+                    headers: { 'Accept': 'application/vnd.github+json' }
                 });
-                if (!res.ok) throw new Error('load failed');
+                if (!res.ok) throw new Error('load failed status=' + res.status);
                 const data = await res.json();
-                const content = data.files[GIST_FILENAME].content;
+                const file = data.files && data.files[GIST_FILENAME];
+                if (!file) return getLocal();
+                let content = file.content;
+                if (file.truncated && file.raw_url) {
+                    const r2 = await fetch(file.raw_url);
+                    if (r2.ok) content = await r2.text();
+                }
                 return JSON.parse(content) || {};
             } catch (e) {
-                console.warn('云端加载失败，回退本地', e);
+                console.warn('匿名加载失败，尝试降级 token', e);
+                const k = _cachedKeys;
+                if (k && k.token) {
+                    try {
+                        const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                            headers: { 'Authorization': `token ${k.token}` }
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            const file = data.files && data.files[GIST_FILENAME];
+                            if (file) {
+                                let content = file.content;
+                                if (file.truncated && file.raw_url) {
+                                    const r2 = await fetch(file.raw_url, { headers: { 'Authorization': `token ${k.token}` } });
+                                    if (r2.ok) content = await r2.text();
+                                }
+                                return JSON.parse(content) || {};
+                            }
+                        }
+                    } catch (_) {}
+                }
                 return getLocal();
             }
         }
@@ -2093,28 +2118,30 @@
         }
 
         async function loadVersions() {
-            try {
-                const k = await ensureKeys();
-                if (!k) return [];
-                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                    headers: { 'Authorization': `token ${k.token}` }
-                });
+            // v2.11.25：匿名优先，失败再降级 token
+            const tryFetch = async (auth) => {
+                const headers = auth ? { 'Authorization': `token ${auth}` } : { 'Accept': 'application/vnd.github+json' };
+                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers });
+                if (!res.ok) throw new Error('gist fetch ' + res.status);
                 const data = await res.json();
                 const file = data.files && data.files[VERSIONS_FILENAME];
                 if (!file) return [];
-                // v2.11.18：GitHub Gist content > 1MB 时会被 truncated，必须从 raw_url 拉完整内容
-                // 否则 JSON.parse 失败 → 返回 []，后续 saveVersion 会用 [] 覆盖整个文件 → 历史全丢
                 let content = file.content;
                 if (file.truncated && file.raw_url) {
-                    const rawRes = await fetch(file.raw_url, {
-                        headers: { 'Authorization': `token ${k.token}` }
-                    });
+                    const rawHeaders = auth ? { 'Authorization': `token ${auth}` } : {};
+                    const rawRes = await fetch(file.raw_url, { headers: rawHeaders });
                     content = await rawRes.text();
                 }
                 return JSON.parse(content);
-            } catch(e) {
-                console.error('[loadVersions] 解析失败，为防止历史被覆盖，抛出错误', e);
-                throw e; // v2.11.18：不再静默返回 []，宁可让上层 saveVersion 失败也不能丢历史
+            };
+            try {
+                return await tryFetch(null);
+            } catch (e1) {
+                console.warn('[loadVersions] 匿名失败，尝试 token', e1);
+                if (_cachedKeys && _cachedKeys.token) {
+                    try { return await tryFetch(_cachedKeys.token); } catch (e2) { throw e2; }
+                }
+                throw e1;
             }
         }
 
@@ -2729,22 +2756,31 @@
         // 启动时从云端拉取 latest snapshot（AI 修改后的当前最新 DOM）
         // v2.11.23：改为读 latest.json（不再用 versions 最后一条，那是"撤回目标"=改前 snapshot）
         (async function restoreLatestSnapshot() {
-            const k = await ensureKeys();
-            if (!k) return; // 未解锁就不拉，等用户点模块时会触发解锁
-            try {
-                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                    headers: { 'Authorization': `token ${k.token}` }
-                });
+            // v2.11.25：去掉 ensureKeys 守卫，匿名读 latest.json
+            // 让访客打开链接立刻看到 AI 改后的最新 DOM
+            const tryFetch = async (auth) => {
+                const headers = auth ? { 'Authorization': `token ${auth}` } : { 'Accept': 'application/vnd.github+json' };
+                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers });
+                if (!res.ok) throw new Error('gist fetch ' + res.status);
                 const data = await res.json();
                 const file = data.files && data.files[LATEST_FILENAME];
-                if (!file) return; // 没有 latest.json 说明没有过 AI 修改，用本地 HTML 就好
+                if (!file) return null;
                 let content = file.content;
                 if (file.truncated && file.raw_url) {
-                    const rawRes = await fetch(file.raw_url, { headers: { 'Authorization': `token ${k.token}` } });
+                    const rawHeaders = auth ? { 'Authorization': `token ${auth}` } : {};
+                    const rawRes = await fetch(file.raw_url, { headers: rawHeaders });
                     content = await rawRes.text();
                 }
-                const latest = JSON.parse(content);
-                if (!latest.snapshot) return;
+                return JSON.parse(content);
+            };
+            try {
+                let latest = null;
+                try { latest = await tryFetch(null); }
+                catch (e1) {
+                    if (_cachedKeys && _cachedKeys.token) latest = await tryFetch(_cachedKeys.token);
+                    else throw e1;
+                }
+                if (!latest || !latest.snapshot) return;
                 const newContainer = document.createElement('div');
                 newContainer.innerHTML = latest.snapshot;
                 const oldContainer = document.querySelector('.container');
