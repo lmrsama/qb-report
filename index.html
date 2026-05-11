@@ -747,8 +747,11 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 pBUPoWlSdp6DmMA6qborAQU3KKiN35aDgcTceBo38yWVBSMcTfABNzXgYRqlQBIhH9lPSLOTB548zS2W1tPWZKcAWq4lYeiVqW6bH6LJ5Sxwqor3TMM= 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'pBUPoWlSdp6DmMA6qborAQU3KKiN35aDgcTceBo38yWVBSMcTfABNzXgYRqlQBIhH9lPSLOTB548zS2W1tPWZKcAWq4lYeiVqW6bH6LJ5Sxwqor3TMM=';
+        // 部署脚本会把 yPP5y9nre9DW0G3aDETMiUtvcc49KEaabaoxLsG32E0jKblX+MQNAfJtlPhs/ljHS5YSHUDTd2ouBy/EKjwdDcgE9Rv9/il3yBCYeJbxSQ8J/OITJx8= 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'yPP5y9nre9DW0G3aDETMiUtvcc49KEaabaoxLsG32E0jKblX+MQNAfJtlPhs/ljHS5YSHUDTd2ouBy/EKjwdDcgE9Rv9/il3yBCYeJbxSQ8J/OITJx8=';
+        // v2.11.27：评论用明文 gist token（仅 gist 权限，最坏情况是被刷点赞/灌广告评论）
+        // 让访客无需密码就能发评论；AI 改稿仍走加密 token（高危操作要密码）
+        const PUBLIC_GIST_TOKEN = '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';
 
         let _cachedKeys = null;
         async function ensureKeys() {
@@ -960,19 +963,30 @@
 
         async function saveToCloud(comments) {
             saveLocal(comments);
-            const k = await ensureKeys();
-            if (!k) return;
+            // v2.11.27：写评论用 PUBLIC_GIST_TOKEN，无需密码解锁
+            // 优先用解锁后的 token（如果用户已解锁），否则用嵌入的明文 token
+            const token = (_cachedKeys && _cachedKeys.token) || PUBLIC_GIST_TOKEN;
+            if (!token || token === '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') {
+                console.warn('PUBLIC_GIST_TOKEN 未配置，评论无法上云');
+                return;
+            }
             try {
-                await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
                     method: 'PATCH',
                     headers: {
-                        'Authorization': `token ${k.token}`,
+                        'Authorization': `token ${token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         files: { [GIST_FILENAME]: { content: JSON.stringify(comments, null, 2) } }
                     })
                 });
+                if (!res.ok) {
+                    console.warn('saveToCloud 失败 status=' + res.status);
+                    if (res.status === 401 || res.status === 403) {
+                        showTopToast && showTopToast('评论上云失败：token 无效');
+                    }
+                }
             } catch (e) {
                 console.warn('云端保存失败', e);
             }
@@ -1137,6 +1151,8 @@
         }
 
         async function openPanel(arg, initialTab) {
+            // v2.11.27：手机端互斥——开侧边面板时关掉底部卡片，避免重叠
+            if (typeof hideMobileCommentCard === 'function') hideMobileCommentCard();
             // 兼容旧调用：字符串 = sectionId 或 _global
             if (typeof arg === 'string') {
                 if (arg === '_global') {
@@ -1662,6 +1678,11 @@
         let mobileCardTarget = null; // 当前卡片绑定的 target 元素
 
         async function openMobileCommentCard(targetEl) {
+            // v2.11.27：手机端互斥——开底部卡片前关掉侧边面板，避免重叠
+            if (typeof closePanel === 'function') {
+                const panelEl = document.getElementById('commentPanel');
+                if (panelEl && panelEl.classList.contains('open')) closePanel();
+            }
             mobileCardTarget = targetEl;
             const tid = targetEl.dataset.targetId;
             const sectionEl = targetEl.closest('.commentable[data-section]');
