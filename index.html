@@ -746,22 +746,22 @@
         const AI_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
         const AI_MODEL = 'deepseek-chat';
 
-        // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 XMIHeExALJaVlDJTOHruz6WdkE6ww/v7NLxHyM9awmhwM9R+PBa08aZ9jRdyUTkRNyfkJNsTEe6rGFgs/r8gtMJCvBVr6ceQBeynDtirHMjM92W7XOUgXj1fyFVBu9fTnwI72sV8LUhDJz2ADHEW41ifTAePVAgq2g== 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'XMIHeExALJaVlDJTOHruz6WdkE6ww/v7NLxHyM9awmhwM9R+PBa08aZ9jRdyUTkRNyfkJNsTEe6rGFgs/r8gtMJCvBVr6ceQBeynDtirHMjM92W7XOUgXj1fyFVBu9fTnwI72sV8LUhDJz2ADHEW41ifTAePVAgq2g==';
-        // v2.11.27：评论用明文 gist token（仅 gist 权限，最坏情况是被刷点赞/灌广告评论）
-        // 让访客无需密码就能发评论；AI 改稿仍走加密 token（高危操作要密码）
-        const PUBLIC_GIST_TOKEN = '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';
+        // v2.12.0：彻底告别前端嵌入 GitHub token。
+        // 所有读写 gist 的请求经 Cloudflare Worker 中转，前端不再持有任何 GitHub 凭证。
+        // 部署脚本会把 https://1406195631-cmjoyal0hh.ap-guangzhou.tencentscf.com 替换为实际 Worker URL（如 https://xxx.workers.dev）。
+        const WORKER_BASE = 'https://1406195631-cmjoyal0hh.ap-guangzhou.tencentscf.com';
+
+        // 仅 AI 改稿密钥（deepseek API key）保留密码加密存储——deepseek key 暴露不会被自动 revoke
+        const ENCRYPTED_KEYS = 'auE3zbUVTwYvpzxp2z11TDZ25HnH4NsLQpXdQtl7ibyEV2b7qjAEjMl+pUcurncV+5DpJsqSCeQl+BqpyqSoy5HXEu8v70rKAkA9fZSdQVyzfmeVP/b+D6AaWcWMzyo8B6EUt5I0WRoMXSLPfoRE9t1iZTNLWh5a4w==';
 
         let _cachedKeys = null;
         async function ensureKeys() {
             if (_cachedKeys) return _cachedKeys;
-            // 从localStorage读
             try {
                 const saved = JSON.parse(atob(localStorage.getItem('_qbk') || ''));
-                if (saved.t && saved.a) { _cachedKeys = { token: saved.t, aiKey: saved.a }; return _cachedKeys; }
+                if (saved.a) { _cachedKeys = { aiKey: saved.a }; return _cachedKeys; }
             } catch(e) {}
-            return null; // 不主动弹窗，由调用方决定何时弹
+            return null;
         }
 
         // v2.11.24：自定义密码弹窗（替代原生 prompt，避免被 toast/浮层遮挡）
@@ -802,7 +802,7 @@
         }
 
         async function unlockKeys() {
-            // 显式触发密码解锁
+            // 显式触发密码解锁（仅 AI 改稿用：解出 deepseek API key）
             if (_cachedKeys) return _cachedKeys;
             const fromStorage = await ensureKeys();
             if (fromStorage) return fromStorage;
@@ -817,7 +817,7 @@
                     attempt === 0 ? '🔒 需要密码' : '🔒 密码错误，请重试',
                     '使用 AI 修改需要密码，请向页面作者索取'
                 );
-                if (!pwd) return null; // 用户取消
+                if (!pwd) return null;
                 try {
                     const enc = new TextEncoder();
                     const pwdHash = await crypto.subtle.digest('SHA-256', enc.encode(pwd));
@@ -827,14 +827,130 @@
                     const ciphertext = data.slice(12);
                     const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, keyMaterial, ciphertext);
                     const obj = JSON.parse(new TextDecoder().decode(plain));
-                    localStorage.setItem('_qbk', btoa(JSON.stringify({ t: obj.t, a: obj.a })));
-                    _cachedKeys = { token: obj.t, aiKey: obj.a };
+                    // 只缓存 aiKey；同时把这次输入的密码记到 sessionStorage 当 Worker 写密码用
+                    localStorage.setItem('_qbk', btoa(JSON.stringify({ a: obj.a })));
+                    sessionStorage.setItem('_qbpw', pwd);
+                    _cachedKeys = { aiKey: obj.a };
                     return _cachedKeys;
                 } catch(e) {
                     // 错误时继续循环，最多 3 次
                 }
             }
             return null;
+        }
+
+        // ========= 评论写入凭证（昵称 + 写密码）=========
+        // v2.12.0：写 gist 经 Worker 中转。访客需要：(1) 昵称（首次访问弹框）(2) 写密码（首次写时弹框）
+        function getNickname() {
+            return localStorage.getItem('comment_author') || '';
+        }
+        async function ensureNickname() {
+            let name = getNickname();
+            if (name) return name;
+            name = await showInputDialog('👋 请输入您的昵称', '昵称会显示在评论里，方便老板知道是谁说的（仅本机记忆）', '如：汉博 / Leo');
+            if (!name || !name.trim()) return null;
+            name = name.trim().slice(0, 30);
+            localStorage.setItem('comment_author', name);
+            return name;
+        }
+        async function ensureWritePassword(forcePrompt) {
+            let pwd = sessionStorage.getItem('_qbpw');
+            if (pwd && !forcePrompt) return pwd;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                pwd = await showPasswordDialog(
+                    attempt === 0 ? '🔒 需要写权限密码' : '🔒 密码错误，请重试',
+                    '本汇报开放评论需要密码，请向页面作者索取'
+                );
+                if (!pwd) return null;
+                // 探测一次（用一个最小的不修改任何文件的写探测：filename=comments.json + 与现有内容相同的 content）
+                // 简化处理：直接缓存，让真正的写请求自己 401 时再清缓存重弹
+                sessionStorage.setItem('_qbpw', pwd);
+                return pwd;
+            }
+            return null;
+        }
+        function clearWritePassword() {
+            sessionStorage.removeItem('_qbpw');
+        }
+        function showInputDialog(title, hint, placeholder) {
+            return new Promise(resolve => {
+                const existing = document.getElementById('inputDialog');
+                if (existing) existing.remove();
+                const el = document.createElement('div');
+                el.id = 'inputDialog';
+                el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
+                el.innerHTML = `
+                    <div style="background:white;border-radius:12px;padding:22px 24px;width:360px;max-width:92vw;box-shadow:0 12px 36px rgba(0,0,0,0.3);">
+                        <div style="font-size:15px;font-weight:700;color:#1f2937;margin-bottom:6px;">${title}</div>
+                        <div style="font-size:12px;color:#888;margin-bottom:14px;">${hint || ''}</div>
+                        <input id="textInput" type="text" autocomplete="off" placeholder="${placeholder || ''}" style="width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;outline:none;box-sizing:border-box;" />
+                        <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;">
+                            <button id="textCancel" style="padding:8px 16px;border:1px solid #e0e0e0;background:white;border-radius:6px;font-size:12px;cursor:pointer;color:#666;">取消</button>
+                            <button id="textOk" style="padding:8px 18px;border:none;background:#667eea;color:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">确定</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(el);
+                const input = el.querySelector('#textInput');
+                setTimeout(() => input.focus(), 50);
+                const close = (val) => { el.remove(); resolve(val); };
+                el.querySelector('#textOk').onclick = () => close(input.value);
+                el.querySelector('#textCancel').onclick = () => close(null);
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') { e.preventDefault(); close(input.value); }
+                    else if (e.key === 'Escape') { e.preventDefault(); close(null); }
+                });
+            });
+        }
+
+        // ========= 通过 Worker 读写 gist =========
+        async function gistGet() {
+            // 公开读：无需密码、无需昵称
+            if (WORKER_BASE === '__' + 'WORKER_BASE__') throw new Error('WORKER_BASE 未配置');
+            const res = await fetch(`${WORKER_BASE}/gist`, { method: 'GET' });
+            if (!res.ok) throw new Error('gistGet failed status=' + res.status);
+            return await res.json(); // { files: { 'comments.json': {content, truncated, raw_url, size}, ... } }
+        }
+        async function gistGetFileContent(filename) {
+            const data = await gistGet();
+            const file = data.files && data.files[filename];
+            if (!file) return null;
+            let content = file.content;
+            if (file.truncated && file.raw_url) {
+                try {
+                    const r2 = await fetch(file.raw_url);
+                    if (r2.ok) content = await r2.text();
+                } catch(_) {}
+            }
+            return content;
+        }
+        // 写：必须密码 + 昵称
+        async function gistWrite(filename, contentObjOrStr) {
+            if (WORKER_BASE === '__' + 'WORKER_BASE__') throw new Error('WORKER_BASE 未配置');
+            const nickname = await ensureNickname();
+            if (!nickname) throw new Error('cancelled: no nickname');
+            let pwd = await ensureWritePassword(false);
+            if (!pwd) throw new Error('cancelled: no password');
+            const content = typeof contentObjOrStr === 'string' ? contentObjOrStr : JSON.stringify(contentObjOrStr);
+            const doFetch = async (password) => {
+                return await fetch(`${WORKER_BASE}/gist/file`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, nickname, filename, content })
+                });
+            };
+            let res = await doFetch(pwd);
+            if (res.status === 401) {
+                clearWritePassword();
+                pwd = await ensureWritePassword(true);
+                if (!pwd) throw new Error('cancelled: no password');
+                res = await doFetch(pwd);
+            }
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(`gistWrite failed ${res.status}: ${text.slice(0,200)}`);
+            }
+            return await res.json();
         }
 
         // 兼容旧代码的常量改为getter
@@ -918,77 +1034,32 @@
             }
         }
 
-        // ===== 云端存储（GitHub Gist）=====
+        // ===== 云端存储（GitHub Gist via Worker）=====
         async function loadFromCloud() {
-            // v2.11.25：读取走匿名公开 fetch（gist 本身 public），让访客无需密码就能看到评论
+            // v2.12.0：经 Worker 公开读，无需密码/昵称
             try {
-                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                    headers: { 'Accept': 'application/vnd.github+json' }
-                });
-                if (!res.ok) throw new Error('load failed status=' + res.status);
-                const data = await res.json();
-                const file = data.files && data.files[GIST_FILENAME];
-                if (!file) return getLocal();
-                let content = file.content;
-                if (file.truncated && file.raw_url) {
-                    const r2 = await fetch(file.raw_url);
-                    if (r2.ok) content = await r2.text();
-                }
+                const content = await gistGetFileContent(GIST_FILENAME);
+                if (!content) return getLocal();
                 return JSON.parse(content) || {};
             } catch (e) {
-                console.warn('匿名加载失败，尝试降级 token', e);
-                const k = _cachedKeys;
-                if (k && k.token) {
-                    try {
-                        const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                            headers: { 'Authorization': `token ${k.token}` }
-                        });
-                        if (res.ok) {
-                            const data = await res.json();
-                            const file = data.files && data.files[GIST_FILENAME];
-                            if (file) {
-                                let content = file.content;
-                                if (file.truncated && file.raw_url) {
-                                    const r2 = await fetch(file.raw_url, { headers: { 'Authorization': `token ${k.token}` } });
-                                    if (r2.ok) content = await r2.text();
-                                }
-                                return JSON.parse(content) || {};
-                            }
-                        }
-                    } catch (_) {}
-                }
+                console.warn('loadFromCloud 失败，降级 local', e);
                 return getLocal();
             }
         }
 
         async function saveToCloud(comments) {
             saveLocal(comments);
-            // v2.11.27：写评论用 PUBLIC_GIST_TOKEN，无需密码解锁
-            // 优先用解锁后的 token（如果用户已解锁），否则用嵌入的明文 token
-            const token = (_cachedKeys && _cachedKeys.token) || PUBLIC_GIST_TOKEN;
-            if (!token || token === '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') {
-                console.warn('PUBLIC_GIST_TOKEN 未配置，评论无法上云');
-                return;
-            }
             try {
-                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        files: { [GIST_FILENAME]: { content: JSON.stringify(comments, null, 2) } }
-                    })
-                });
-                if (!res.ok) {
-                    console.warn('saveToCloud 失败 status=' + res.status);
-                    if (res.status === 401 || res.status === 403) {
-                        showTopToast && showTopToast('评论上云失败：token 无效');
+                await gistWrite(GIST_FILENAME, JSON.stringify(comments, null, 2));
+            } catch (e) {
+                console.warn('saveToCloud 失败', e);
+                if (typeof showTopToast === 'function') {
+                    if (String(e.message).includes('cancelled')) {
+                        showTopToast('未填写昵称或密码，评论已保存到本机但未上云');
+                    } else {
+                        showTopToast('评论上云失败：' + e.message.slice(0, 80));
                     }
                 }
-            } catch (e) {
-                console.warn('云端保存失败', e);
             }
         }
 
@@ -1807,11 +1878,8 @@
                 k = await ensureKeys();
             }
 
-            let author = localStorage.getItem('comment_author');
-            if (!author) {
-                author = prompt('请输入您的名字（如：汉博）') || '匿名';
-                localStorage.setItem('comment_author', author);
-            }
+            let author = await ensureNickname();
+            if (!author) { alert('请先填写昵称'); return; }
 
             const setBtnState = (loading) => {
                 const btn = document.getElementById('panelSendBtn');
@@ -2139,30 +2207,14 @@
         }
 
         async function loadVersions() {
-            // v2.11.25：匿名优先，失败再降级 token
-            const tryFetch = async (auth) => {
-                const headers = auth ? { 'Authorization': `token ${auth}` } : { 'Accept': 'application/vnd.github+json' };
-                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers });
-                if (!res.ok) throw new Error('gist fetch ' + res.status);
-                const data = await res.json();
-                const file = data.files && data.files[VERSIONS_FILENAME];
-                if (!file) return [];
-                let content = file.content;
-                if (file.truncated && file.raw_url) {
-                    const rawHeaders = auth ? { 'Authorization': `token ${auth}` } : {};
-                    const rawRes = await fetch(file.raw_url, { headers: rawHeaders });
-                    content = await rawRes.text();
-                }
-                return JSON.parse(content);
-            };
+            // v2.12.0：经 Worker 公开读
             try {
-                return await tryFetch(null);
-            } catch (e1) {
-                console.warn('[loadVersions] 匿名失败，尝试 token', e1);
-                if (_cachedKeys && _cachedKeys.token) {
-                    try { return await tryFetch(_cachedKeys.token); } catch (e2) { throw e2; }
-                }
-                throw e1;
+                const content = await gistGetFileContent(VERSIONS_FILENAME);
+                if (!content) return [];
+                return JSON.parse(content);
+            } catch (e) {
+                console.warn('[loadVersions] 失败', e);
+                return [];
             }
         }
 
@@ -2203,15 +2255,7 @@
             });
             const trimmed = versions.slice(-5);
             try {
-                const k = await ensureKeys();
-                if (!k) return versionNum;
-                await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `token ${k.token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        files: { [VERSIONS_FILENAME]: { content: JSON.stringify(trimmed) } }
-                    })
-                });
+                await gistWrite(VERSIONS_FILENAME, JSON.stringify(trimmed));
             } catch (e) { console.warn('保存版本失败', e); }
             return versionNum;
         }
@@ -2230,15 +2274,7 @@
             });
             const snapshot = containerClone.outerHTML;
             try {
-                const k = await ensureKeys();
-                if (!k) return;
-                await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `token ${k.token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        files: { [LATEST_FILENAME]: { content: JSON.stringify({ time: new Date().toLocaleString('zh-CN'), snapshot }) } }
-                    })
-                });
+                await gistWrite(LATEST_FILENAME, JSON.stringify({ time: new Date().toLocaleString('zh-CN'), snapshot }));
             } catch(e) { console.warn('保存 latest 失败', e); }
         }
 
@@ -2314,17 +2350,8 @@
             // v2.11.19：回滚=撤回语义，不再写新版本。
             // 直接把云端 versions 截断到 <=v 那一条，让 restoreLatestSnapshot 下次刷新拉到目标版本
             try {
-                const k = await ensureKeys();
-                if (k) {
-                    const truncated = versions.filter(x => x.v <= v);
-                    await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                        method: 'PATCH',
-                        headers: { 'Authorization': `token ${k.token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            files: { [VERSIONS_FILENAME]: { content: JSON.stringify(truncated) } }
-                        })
-                    });
-                }
+                const truncated = versions.filter(x => x.v <= v);
+                await gistWrite(VERSIONS_FILENAME, JSON.stringify(truncated));
             } catch(e) { console.warn('截断版本失败', e); }
             // 同时把"AI 已执行 v>v 的评论"标为撤回（type 改回 normal，去掉 version 字段），让 AI 修改 list 不再显示已撤销的记录
             try {
@@ -2796,32 +2823,12 @@
         });
 
         // 启动时从云端拉取 latest snapshot（AI 修改后的当前最新 DOM）
-        // v2.11.23：改为读 latest.json（不再用 versions 最后一条，那是"撤回目标"=改前 snapshot）
+        // v2.12.0：经 Worker 公开读
         (async function restoreLatestSnapshot() {
-            // v2.11.25：去掉 ensureKeys 守卫，匿名读 latest.json
-            // 让访客打开链接立刻看到 AI 改后的最新 DOM
-            const tryFetch = async (auth) => {
-                const headers = auth ? { 'Authorization': `token ${auth}` } : { 'Accept': 'application/vnd.github+json' };
-                const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers });
-                if (!res.ok) throw new Error('gist fetch ' + res.status);
-                const data = await res.json();
-                const file = data.files && data.files[LATEST_FILENAME];
-                if (!file) return null;
-                let content = file.content;
-                if (file.truncated && file.raw_url) {
-                    const rawHeaders = auth ? { 'Authorization': `token ${auth}` } : {};
-                    const rawRes = await fetch(file.raw_url, { headers: rawHeaders });
-                    content = await rawRes.text();
-                }
-                return JSON.parse(content);
-            };
             try {
-                let latest = null;
-                try { latest = await tryFetch(null); }
-                catch (e1) {
-                    if (_cachedKeys && _cachedKeys.token) latest = await tryFetch(_cachedKeys.token);
-                    else throw e1;
-                }
+                const content = await gistGetFileContent(LATEST_FILENAME);
+                if (!content) return;
+                const latest = JSON.parse(content);
                 if (!latest || !latest.snapshot) return;
                 const newContainer = document.createElement('div');
                 newContainer.innerHTML = latest.snapshot;
