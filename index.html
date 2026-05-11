@@ -738,7 +738,7 @@
         // ========================================
         // 配置区
         // ========================================
-        const GIST_ID = '6874dd63b2d1c87e828c92cbe61dbdf4';
+        const GIST_ID = '3c42d1323e54dfabcddb26635bb68944';
         const GIST_FILENAME = 'comments.json';
         const VERSIONS_FILENAME = 'versions.json';
         const LATEST_FILENAME = 'latest.json';  // v2.11.23：分离 "撤回历史" 和 "当前最新 DOM"
@@ -747,8 +747,8 @@
         const AI_MODEL = 'deepseek-chat';
 
         // 密钥不再硬编码：通过密码解锁内置的加密密钥块
-        // 部署脚本会把 xPK0se1B/9bKUJaoGuI3X+Op8TSOqTfgUKPbpb3uYSzxkbZcE3ZxlQXHIQr4WdbS3t3duOFxPxUD6Az5y3lOAyKVpU3G3V1ZdAKguxP8uOgegE4wh6I= 替换为实际加密数据
-        const ENCRYPTED_KEYS = 'xPK0se1B/9bKUJaoGuI3X+Op8TSOqTfgUKPbpb3uYSzxkbZcE3ZxlQXHIQr4WdbS3t3duOFxPxUD6Az5y3lOAyKVpU3G3V1ZdAKguxP8uOgegE4wh6I=';
+        // 部署脚本会把 nP4Wboe85k1HbflAaNgzOdly0+Dt/WNh1M3S1WJUTbmccgtCTaA7coI+/YiwLpjSG5wZpp+Peot9J3Zn/up7daSflCx1WdHNTOOAbP7V6AJ3XAfVzYE= 替换为实际加密数据
+        const ENCRYPTED_KEYS = 'nP4Wboe85k1HbflAaNgzOdly0+Dt/WNh1M3S1WJUTbmccgtCTaA7coI+/YiwLpjSG5wZpp+Peot9J3Zn/up7daSflCx1WdHNTOOAbP7V6AJ3XAfVzYE=';
 
         let _cachedKeys = null;
         async function ensureKeys() {
